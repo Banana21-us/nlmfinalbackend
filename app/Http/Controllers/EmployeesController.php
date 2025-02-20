@@ -21,24 +21,42 @@ use App\Models\empfamily;
 use App\Models\spouse;
 class EmployeesController extends Controller
 {
-    public function login(Request $request){
+    public function login(Request $request) {
+        Log::info('Login attempt', ['email' => $request->email]);
+    
         $request->validate([
             'email' => 'required|email',
             'password' => 'required'
         ]);
+    
         $admin = User::where('email', $request->email)->first();
-        if (!$admin || !Hash::check($request->password, $admin->password)) {
+    
+        if (!$admin) {
+            Log::warning('Login failed: User not found', ['email' => $request->email]);
             return response()->json([
                 'message' => 'The provided credentials are incorrect'
             ], 401);
         }
+    
+        if (!Hash::check($request->password, $admin->password)) {
+            Log::warning('Login failed: Incorrect password', ['email' => $request->email]);
+            return response()->json([
+                'message' => 'The provided credentials are incorrect'
+            ], 401);
+        }
+    
+        Log::info('Login successful', ['email' => $request->email, 'id' => $admin->id]);
+    
         $token = $admin->createToken($admin->name);
+    
         return response()->json([
             'admin' => $admin,
+            'position' => $admin->position,
             'token' => $token->plainTextToken,
             'id' => $admin->id
         ]);
     }
+    
     public function logout(Request $request){
         if ($request->user()) {
             $request->user()->tokens()->delete();
