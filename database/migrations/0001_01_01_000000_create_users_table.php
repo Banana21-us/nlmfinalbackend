@@ -14,6 +14,16 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->date('birthdate'); // Use 'date' for birthdate
+            $table->string('birthplace'); // Use 'string' for birthplace
+            $table->bigInteger('phone_number');
+            $table->enum('gender', ['Male', 'Female']); // Use 'enum' for gender
+            $table->enum('status', ['Single', 'Married'])->default('Single');
+            $table->string('address'); // Use 'string' for birthplace
+            $table->string('department'); // Use 'string' for birthplace
+            $table->string('position')->nullable(); // Use 'string' for birthplace
+            $table->string('designation')->nullable(); // Use 'string' for birthplace
+            $table->string('img')->nullable();
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
