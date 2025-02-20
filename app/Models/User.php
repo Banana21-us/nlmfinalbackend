@@ -20,9 +20,14 @@ class User extends Authenticatable
     
     protected $fillable = [
         'name', 'birthdate', 'birthplace', 'phone_number', 'gender','status',
-        'address', 'department', 'position', 'designation', 'email', 'password'
+        'address', 'department', 'position', 'designation', 'email', 'password','img','reg_approval'
     ];
-
+    protected $dates = ['reg_approval'];
+    
+    public function isApproved()
+    {
+        return !is_null($this->reg_approval);
+    }
     /**
      * The attributes that should be hidden for serialization.
      *

@@ -4,10 +4,14 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DesignationController;
 use App\Http\Controllers\PositionController;
+use App\Http\Controllers\SpouseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EmployeesController;
 use App\Http\Controllers\LeaveTypeController;
+use App\Http\Controllers\EmploymentdetController;
+use App\Http\Controllers\EmploymenteducController;
+use App\Http\Controllers\EmpfamilyController;
 use App\Models\designation;
 
 // Protected Route (Requires Authentication via Sanctum)
@@ -17,7 +21,6 @@ use App\Models\designation;
 // Route::middleware(['auth:sanctum'])->group(function () {
 //     Route::post('/users', [EmployeesController::class, 'store']);
 // });
-// Public Route to Store Users (if you want it to be accessible without authentication)
 
 Route::post('/login',[EmployeesController::class,'login']);
 Route::post('/regusers', [EmployeesController::class, 'store']);
@@ -27,6 +30,16 @@ Route::put('/employees/{id}', [EmployeesController::class, 'update']);
 Route::get('/employees', [EmployeesController::class, 'index']);
 Route::delete('/employees/{id}', [EmployeesController::class, 'destroy']);
 Route::get('/employees/{id}', [EmployeesController::class, 'show']);
+
+Route::put('/acceptemployees/{id}', [EmployeesController::class, 'acceptemployee']);
+
+Route::apiResource('employeefamily', EmpfamilyController::class);
+Route::apiResource('spouse', SpouseController::class);
+
+Route::apiResource('employmentdetails', EmploymentdetController::class);
+
+Route::apiResource('employmenteducs', EmploymenteducController::class);
+
 
 Route::apiResource('leave-types', LeaveTypeController::class);
 Route::apiResource('department', DepartmentController::class);
@@ -42,6 +55,17 @@ Route::post('/upload', function (Request $request) {
     }
 
     return response()->json(['error' => 'No file uploaded'], 400);
+});
+
+Route::post('/upload-image', [EmployeesController::class, 'uploadImage']);
+Route::get('assets/adminPic/{filename}', function ($filename) {
+        $path = public_path('assets/adminPic/' . $filename);
+        
+        if (file_exists($path)) {
+            return response()->file($path);
+        }
+    
+        abort(404);
 });
 
 Route::middleware('auth:sanctum')->post('/logout',[EmployeesController::class,'logout']);

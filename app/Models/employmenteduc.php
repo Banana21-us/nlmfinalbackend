@@ -13,10 +13,10 @@ class employmenteduc extends Model
     // Define fillable fields
     protected $fillable = [
         'userid',
-        'elementary',
-        'highschool',
-        'college',
-        'gradschool',
+        'levels',
+        'year',
+        'school',
+        'degree',
     ];
 
     // Define the relationship with the User model
