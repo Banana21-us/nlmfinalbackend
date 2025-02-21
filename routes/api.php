@@ -13,7 +13,7 @@ use App\Http\Controllers\EmploymentdetController;
 use App\Http\Controllers\EmploymenteducController;
 use App\Http\Controllers\EmpfamilyController;
 use App\Models\designation;
-
+use App\Http\Controllers\LeaveRequestController;
 // Protected Route (Requires Authentication via Sanctum)
 // Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 //     return $request->user();
@@ -39,6 +39,9 @@ Route::apiResource('spouse', SpouseController::class);
 Route::apiResource('employmentdetails', EmploymentdetController::class);
 
 Route::apiResource('employmenteducs', EmploymenteducController::class);
+
+
+Route::apiResource('leave-requests', LeaveRequestController::class);
 
 
 Route::apiResource('leave-types', LeaveTypeController::class);
