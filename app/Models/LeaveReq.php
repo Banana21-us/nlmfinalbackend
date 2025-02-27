@@ -5,10 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class LeaveRequest extends Model
+class LeaveReq extends Model
 {
     use HasFactory;
-
     protected $fillable = ['userid', 'leavetypeid', 'from', 'to', 'reason', 'status'];
 
     // Relationship with User
@@ -22,4 +21,5 @@ class LeaveRequest extends Model
     {
         return $this->belongsTo(LeaveType::class, 'leavetypeid');
     }
+    
 }

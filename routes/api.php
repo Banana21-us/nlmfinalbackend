@@ -13,7 +13,7 @@ use App\Http\Controllers\EmploymentdetController;
 use App\Http\Controllers\EmploymenteducController;
 use App\Http\Controllers\EmpfamilyController;
 use App\Models\designation;
-use App\Http\Controllers\LeaveRequestController;
+use App\Http\Controllers\LeaveReqController;
 // Protected Route (Requires Authentication via Sanctum)
 // Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 //     return $request->user();
@@ -32,6 +32,9 @@ Route::delete('/employees/{id}', [EmployeesController::class, 'destroy']);
 Route::get('/employees/{id}', [EmployeesController::class, 'show']);
 
 Route::put('/acceptemployees/{id}', [EmployeesController::class, 'acceptemployee']);
+Route::post('/accountsaveedit', [EmployeesController::class, 'accountsaveedit']);
+
+Route::get('/account/{userid}', [EmployeesController::class, 'getAccountDetails']);
 
 Route::apiResource('employeefamily', EmpfamilyController::class);
 Route::apiResource('spouse', SpouseController::class);
@@ -41,7 +44,10 @@ Route::apiResource('employmentdetails', EmploymentdetController::class);
 Route::apiResource('employmenteducs', EmploymenteducController::class);
 
 
-Route::apiResource('leave-requests', LeaveRequestController::class);
+Route::apiResource('leaverequests', LeaveReqController::class);
+Route::get('/leaverequests/user/{userid}', [LeaveReqController::class, 'showByUserId']);
+Route::delete('/leaverequests/{id}', [LeaveReqController::class, 'destroy']);
+Route::put('/leave-requests/userupdate/{id}', [LeaveReqController::class, 'updateDetails']);
 
 
 Route::apiResource('leave-types', LeaveTypeController::class);

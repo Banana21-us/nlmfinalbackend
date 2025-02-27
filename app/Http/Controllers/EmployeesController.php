@@ -22,8 +22,6 @@ use App\Models\spouse;
 class EmployeesController extends Controller
 {
     public function login(Request $request) {
-        Log::info('Login attempt', ['email' => $request->email]);
-    
         $request->validate([
             'email' => 'required|email',
             'password' => 'required'
@@ -31,29 +29,23 @@ class EmployeesController extends Controller
     
         $admin = User::where('email', $request->email)->first();
     
-        if (!$admin) {
-            Log::warning('Login failed: User not found', ['email' => $request->email]);
+        if (!$admin || !Hash::check($request->password, $admin->password)) {
             return response()->json([
                 'message' => 'The provided credentials are incorrect'
             ], 401);
         }
-    
-        if (!Hash::check($request->password, $admin->password)) {
-            Log::warning('Login failed: Incorrect password', ['email' => $request->email]);
-            return response()->json([
-                'message' => 'The provided credentials are incorrect'
-            ], 401);
-        }
-    
-        Log::info('Login successful', ['email' => $request->email, 'id' => $admin->id]);
     
         $token = $admin->createToken($admin->name);
     
         return response()->json([
             'admin' => $admin,
-            'position' => $admin->position,
+            'position' => $admin->position, // Ensure this is correct
             'token' => $token->plainTextToken,
-            'id' => $admin->id
+            'id' => $admin->id,
+            'department' => $admin->department,
+            'position' => $admin->position,
+            'designation' => $admin->designation,
+            
         ]);
     }
     
@@ -124,9 +116,209 @@ class EmployeesController extends Controller
             'total_announcements' => $announcementCount,
         ]);
     }
-    public function empregistration(){
-        
+    public function empregistration(){   
     }
+    public function accountsaveedit(Request $request){
+        Log::info('Starting accountsaveedit method');
+    
+        try {
+            // Log request data
+            Log::info('Raw request data:', [$request->getContent()]);
+            Log::info('Parsed request data:', $request->all());
+    
+            // Validate incoming request data
+            $validatedData = $request->validate([
+                'userid' => 'required|exists:users,id',
+                'name' => 'required|string',
+                'phone_number' => 'required|numeric',
+                'email' => 'required|email',
+                'address' => 'nullable|string',
+                'birthdate' => 'nullable|date',
+                'birthplace' => 'nullable|string',
+                'spouse' => 'nullable|string',
+                'marriageDate' => 'nullable|date',
+                'children' => 'nullable|array',
+                'children.*.name' => 'required|string',
+                'children.*.dateofbirth' => 'required|date',
+                'children.*.career' => 'nullable|string',
+                'employments' => 'nullable|array',
+                'employments.*.position' => 'required|string',
+                'employments.*.dateofemp' => 'nullable|date',
+                'employments.*.organization' => 'required|string',
+                'education' => 'nullable|array',
+                'education.*.level' => 'required|string',
+                'education.*.year' => 'required|date',
+                'education.*.school' => 'required|string',
+                'education.*.degree' => 'nullable|string',
+            ]);
+    
+            Log::info('Request data validated successfully.');
+    
+            // Find the user to update
+            $user = User::findOrFail($request->userid);
+    
+            Log::info('User found:', ['user_id' => $user->id, 'user_name' => $user->name]);
+    
+            // Update user basic info
+            $user->update([
+                'name' => $request->name,
+                'phone_number' => $request->phone_number,
+                'email' => $request->email,
+                'address' => $request->address,
+                'birthdate' => $request->birthdate,
+                'birthplace' => $request->birthplace,
+            ]);
+    
+            Log::info('User basic info updated successfully.');
+    
+            // Handle education records
+            if ($request->has('education')) {
+                Employmenteduc::where('userid', $request->userid)->delete(); // Remove old education records
+                Log::info('Existing education records removed.');
+    
+                foreach ($request->education as $edu) {
+                    Employmenteduc::create([
+                        'userid' => $request->userid,
+                        'levels' => $edu['level'],
+                        'year' => $edu['year'],
+                        'school' => $edu['school'],
+                        'degree' => $edu['degree'] ?? null,
+                    ]);
+                    Log::info('Education record created:', ['level' => $edu['level'], 'school' => $edu['school']]);
+                }
+                Log::info('Education information updated/created successfully.');
+            } else {
+                Log::info('No education data provided in the request.');
+            }
+    
+            // Handle spouse information
+            $spouseData = [
+                'userid' => $request->userid,
+                'name' => $request->spouse,
+                'dateofmarriage' => $request->dateofmarriage,
+            ];
+    
+            Spouse::updateOrCreate(['userid' => $request->userid], $spouseData);
+    
+            Log::info('Spouse information updated/created successfully.');
+    
+            // Handle children
+            Empfamily::where('userid', $request->userid)->delete(); // Remove old children first
+            Log::info('Existing children removed.');
+    
+            if ($request->has('children')) {
+                foreach ($request->children as $child) {
+                    Empfamily::create([
+                        'userid' => $request->userid,
+                        'children' => $child['name'],
+                        'dateofbirth' => $child['dateofbirth'],
+                        'career' => $child['career'],
+                    ]);
+                    Log::info('Child created:', ['child_name' => $child['name']]);
+                }
+                Log::info('Children information updated/created successfully.');
+            } else {
+                Log::info('No children data provided in the request.');
+            }
+    
+            // Handle employments
+            if ($request->has('employments')) {
+                Employmentdet::where('userid', $request->userid)->delete(); // Remove old employments first
+                Log::info('Existing employments removed.');
+                foreach ($request->employments as $employment) {
+                    Employmentdet::create([
+                        'userid' => $request->userid,
+                        'position' => $employment['position'],
+                        'dateofemp' => $employment['dateofemp'],
+                        'organization' => $employment['organization'],
+                    ]);
+                    Log::info('Employment created:', ['position' => $employment['position']]);
+                }
+                Log::info('Employment information updated/created successfully.');
+            } else {
+                Log::info('No employment data provided in the request.');
+            }
+    
+            Log::info('Account data saved successfully.');
+    
+            return response()->json(['message' => 'Account data saved successfully'], 200);
+    
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Log validation errors
+            Log::error('Validation errors:', $e->errors());
+            return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
+    
+        } catch (\Exception $e) {
+            // Log any other exceptions that occur
+            Log::error('Error saving account data: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all(),
+            ]);
+            return response()->json(['message' => 'Error saving account data: ' . $e->getMessage()], 500);
+        }
+    }
+    
+
+    public function getAccountDetails($userid)
+    {
+        Log::info('Fetching account details for user', ['userid' => $userid]);
+    
+        try {
+            // Fetch the user
+            $user = User::where('id', $userid)->firstOrFail();
+    
+            // Fetch employment education details
+            $education = Employmenteduc::where('userid', $userid)
+                ->select('levels as level', 'year', 'school', 'degree')
+                ->get();
+    
+            // Fetch spouse details
+            $spouse = Spouse::where('userid', $userid)->select('name', 'dateofmarriage')->first();
+    
+            // Fetch children details
+            $children = Empfamily::where('userid', $userid)
+                ->select('children as name', 'dateofbirth', 'career')
+                ->get();
+    
+            // Fetch employment history
+            $employments = Employmentdet::where('userid', $userid)
+                ->select('position', 'dateofemp', 'organization')
+                ->get();
+    
+            // Compile account data
+            $accountData = [
+                'userid' => $user->id,
+                'name' => $user->name,
+                'phone_number' => $user->phone_number,
+                'email' => $user->email,
+                'address' => $user->address,
+                'birthdate' => $user->birthdate,
+                'birthplace' => $user->birthplace,
+                'img' => $user->img, // Image field
+                'department' => $user->department, // Image field
+                'position' => $user->position, // Position field
+                'designation' => $user->designation,
+                'spouse' => $spouse,
+                'dateofmarriage' => $spouse->dateofmarriage,
+                'children' => $children,
+                'employments' => $employments,
+                'education' => $education,
+                
+
+            ];
+    
+            Log::info('Account details retrieved successfully.', ['userid' => $userid]);
+    
+            return response()->json(['data' => $accountData], 200);
+    
+        } catch (\Exception $e) {
+            Log::error('Error fetching account details: ' . $e->getMessage(), ['userid' => $userid]);
+    
+            return response()->json(['message' => 'Error fetching account details'], 500);
+        }
+    }
+    
+    
     public function index(){
         // $employees = User::select('name', 'department', 'designation')->get();
         $employees = User::all();

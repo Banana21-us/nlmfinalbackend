@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('leave_requests', function (Blueprint $table) {
+        Schema::create('leave_reqs', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('userid');
             $table->unsignedBigInteger('leavetypeid');
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('leave_requests');
+        Schema::dropIfExists('leave_reqs');
     }
 };
