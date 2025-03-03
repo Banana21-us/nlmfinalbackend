@@ -22,21 +22,26 @@ use App\Models\spouse;
 class EmployeesController extends Controller
 {
     public function login(Request $request) {
+        Log::info('Login request received.', ['request_data' => $request->all()]);
+
         $request->validate([
             'email' => 'required|email',
             'password' => 'required'
         ]);
-    
+
         $admin = User::where('email', $request->email)->first();
-    
+
         if (!$admin || !Hash::check($request->password, $admin->password)) {
+            Log::warning('Login failed: Incorrect credentials.', ['email' => $request->email]);
             return response()->json([
                 'message' => 'The provided credentials are incorrect'
             ], 401);
         }
-    
+
         $token = $admin->createToken($admin->name);
-    
+
+        Log::info('Login successful.', ['admin_id' => $admin->id]);
+
         return response()->json([
             'admin' => $admin,
             'position' => $admin->position, // Ensure this is correct
@@ -45,7 +50,6 @@ class EmployeesController extends Controller
             'department' => $admin->department,
             'position' => $admin->position,
             'designation' => $admin->designation,
-            
         ]);
     }
     
@@ -439,50 +443,61 @@ public function acceptemployee(Request $request, $id){
      * Update the specified resource in storage.
      */
     public function update(Request $request, $id)
-{
-    // Find the employee by ID
-    $employee = User::find($id);
+    {
+        Log::info('Received request to update employee', ['employee_id' => $id, 'request_data' => $request->all()]);
 
-    // If employee not found, return error
-    if (!$employee) {
-        return response()->json(['message' => 'Employee not found'], 404);
+        // Find the employee by ID
+        $employee = User::find($id);
+
+        // If employee not found, return error
+        if (!$employee) {
+            Log::warning('Employee not found', ['employee_id' => $id]);
+            return response()->json(['message' => 'Employee not found'], 404);
+        }
+
+        // Validate request data
+        $request->validate([
+            'department' => 'sometimes|string|max:255',
+            'position' => 'sometimes|string|max:255|nullable',
+            'designation' => 'sometimes|string|max:255|nullable',
+            'email' => 'sometimes|email|unique:users,email,' . $id,
+            'password' => 'sometimes|string|min:6|nullable',
+        ]);
+
+        Log::info('Validation passed', ['validated_data' => $request->all()]);
+
+        // Update fields if provided
+        if ($request->has('department')) {
+            $employee->department = $request->department;
+        }
+        if ($request->has('position')) {
+            $employee->position = $request->position;
+        }
+        if ($request->has('designation')) {
+            $employee->designation = $request->designation;
+        }
+        if ($request->has('email')) {
+            $employee->email = $request->email;
+        }
+        // Only update password if it is not null, otherwise keep the old password
+        if ($request->filled('password')) {
+            $employee->password = Hash::make($request->password);
+        } else {
+            $employee->password = $employee->getOriginal('password');
+        }
+
+        // Save the updated data
+        $employee->save();
+
+        Log::info('Employee updated successfully', ['employee_id' => $id]);
+
+        // Return success response
+        return response()->json([
+            'message' => 'Employee updated successfully',
+            'employee' => $employee
+        ]);
     }
 
-    // Validate request data
-    $request->validate([
-        'department' => 'sometimes|string|max:255',
-        'position' => 'sometimes|string|max:255|nullable',
-        'designation' => 'sometimes|string|max:255|nullable',
-        'email' => 'sometimes|email|unique:users,email,' . $id,
-        'password' => 'sometimes|string|min:6|nullable',
-    ]);
-
-    // Update fields if provided
-    if ($request->has('department')) {
-        $employee->department = $request->department;
-    }
-    if ($request->has('position')) {
-        $employee->position = $request->position;
-    }
-    if ($request->has('designation')) {
-        $employee->designation = $request->designation;
-    }
-    if ($request->has('email')) {
-        $employee->email = $request->email;
-    }
-    if ($request->has('password')) {
-        $employee->password = bcrypt($request->password);
-    }
-
-    // Save the updated data
-    $employee->save();
-
-    // Return success response
-    return response()->json([
-        'message' => 'Employee updated successfully',
-        'employee' => $employee
-    ]);
-}
 
 
     /**

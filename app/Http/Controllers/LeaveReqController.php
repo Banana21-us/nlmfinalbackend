@@ -98,6 +98,47 @@ class LeaveReqController extends Controller
         return response()->json(['message' => 'Leave request details updated successfully'], 200);
     }
     
+    public function approveLeaveRequest($id)
+    {
+        $leaveReq = LeaveReq::find($id);
+
+        if (!$leaveReq) {
+            return response()->json(['message' => 'Leave request not found'], 404);
+        }
+
+        // Check if the status is already approved
+        if ($leaveReq->status === 'Approved') {
+            return response()->json(['message' => 'Leave request is already approved'], 400);
+        }
+
+        $leaveReq->update([
+            'status' => 'Approved',
+        ]);
+
+        return response()->json(['message' => 'Leave request approved successfully'], 200);
+    }
+
+    
+    public function rejectLeaveRequest($id)
+    {
+        $leaveReq = LeaveReq::find($id);
+
+        if (!$leaveReq) {
+            return response()->json(['message' => 'Leave request not found'], 404);
+        }
+
+        // Check if the status is already Rejected
+        if ($leaveReq->status === 'Rejected') {
+            return response()->json(['message' => 'Leave request is already Rejected'], 400);
+        }
+
+        $leaveReq->update([
+            'status' => 'Rejected',
+        ]);
+
+        return response()->json(['message' => 'Leave request Rejected successfully'], 200);
+    }
+    
     // Delete leave request
     public function destroy($id)
     {

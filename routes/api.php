@@ -48,7 +48,8 @@ Route::apiResource('leaverequests', LeaveReqController::class);
 Route::get('/leaverequests/user/{userid}', [LeaveReqController::class, 'showByUserId']);
 Route::delete('/leaverequests/{id}', [LeaveReqController::class, 'destroy']);
 Route::put('/leave-requests/userupdate/{id}', [LeaveReqController::class, 'updateDetails']);
-
+Route::put('/leave-reqs/{id}/approve', [LeaveReqController::class, 'approveLeaveRequest']);
+Route::put('/leave-reqs/{id}/reject', [LeaveReqController::class, 'rejectLeaveRequest']);
 
 Route::apiResource('leave-types', LeaveTypeController::class);
 Route::apiResource('department', DepartmentController::class);
