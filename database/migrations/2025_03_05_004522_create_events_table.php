@@ -20,6 +20,8 @@ return new class extends Migration
         });
     }
 
+    // yah ayos lang na walang down method kasi wala naman talagang need irollback
+
     /**
      * Reverse the migrations.
      */
