@@ -14,6 +14,8 @@ use App\Http\Controllers\EmploymenteducController;
 use App\Http\Controllers\EmpfamilyController;
 use App\Models\designation;
 use App\Http\Controllers\LeaveReqController;
+use App\Http\Controllers\EventsController;
+use App\Http\Controllers\CalendardaysController;
 // Protected Route (Requires Authentication via Sanctum)
 // Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 //     return $request->user();
@@ -22,9 +24,12 @@ use App\Http\Controllers\LeaveReqController;
 //     Route::post('/users', [EmployeesController::class, 'store']);
 // });
 
+// Route::middleware(['auth:sanctum'])->group(function () {
+// });
 Route::post('/login',[EmployeesController::class,'login']);
 Route::post('/regusers', [EmployeesController::class, 'store']);
 Route::get('/users/count', [EmployeesController::class, 'count']);
+
 
 Route::put('/employees/{id}', [EmployeesController::class, 'update']);
 Route::get('/employees', [EmployeesController::class, 'index']);
@@ -57,6 +62,8 @@ Route::apiResource('designation', DesignationController::class);
 Route::apiResource('position', PositionController::class);
 Route::apiResource('announcements', AnnouncementController::class);
 
+Route::apiResource('events', EventsController::class);
+
 Route::post('/upload', function (Request $request) {
     if ($request->hasFile('file')) {
         $file = $request->file('file');
@@ -66,10 +73,9 @@ Route::post('/upload', function (Request $request) {
 
     return response()->json(['error' => 'No file uploaded'], 400);
 });
-
 Route::post('/upload-image', [EmployeesController::class, 'uploadImage']);
-Route::get('assets/adminPic/{filename}', function ($filename) {
-        $path = public_path('assets/adminPic/' . $filename);
+Route::get('assets/userPic/{filename}', function ($filename) {
+        $path = public_path('assets/userPic/' . $filename);
         
         if (file_exists($path)) {
             return response()->file($path);
