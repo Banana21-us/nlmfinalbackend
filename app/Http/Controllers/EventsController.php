@@ -50,53 +50,68 @@ class EventsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function getEventsByUserId($userId)
     {
-        $event = events::find($id);
-        // where('id', $id)->where('userid', Auth::id())->first();
+        $events = events::where('userid', $userId)->get();
 
-        if (!$event) {
-            return response()->json(['message' => 'Event not found'], 404);
+        if ($events->isEmpty()) {
+            return response()->json(['message' => 'No events found for this user'], 404);
         }
 
-        return response()->json($event);
-
+        return response()->json($events);
     }
+
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
-    {
-        Log::info('Update method called', ['id' => $id, 'request' => $request->all()]);
+   
 
-        $event = events::findOrFail($id);
-        // where('id', $id)->where('userid', Auth::id())->first();
 
-        if (!$event) {
-            Log::warning('Event not found', ['id' => $id]);
-            return response()->json(['message' => 'Event not found'], 404);
-        }
+public function update(Request $request, $id)
+{
+    Log::info('Update method called', ['id' => $id, 'request' => $request->all()]);
 
-        $request->validate([
-            'title' => 'sometimes|string|max:255',
-            'time' => 'sometimes|date_format:Y-m-d H:i:s',
-        ]);
+    $event = events::findOrFail($id);
 
-        Log::info('Validation passed');
-
-        $event->update($request->only(['title', 'time']));
-
-        Log::info('Event updated', ['event' => $event]);
-
-        return response()->json(['message' => 'Event updated successfully', 'event' => $event]);
+    if (!$event) {
+        Log::warning('Event not found', ['id' => $id]);
+        return response()->json(['message' => 'Event not found'], 404);
     }
+
+    // Adjust validation to match datetime-local input format
+    $request->validate([
+        'title' => 'sometimes|string|max:255',
+        'time' => 'sometimes|date_format:Y-m-d\TH:i', // Correct format for HTML datetime-local
+    ]);
+
+    Log::info('Validation passed');
+
+    if ($request->has('time')) {
+        $localTime = Carbon::parse($request->time); // Convert input to Carbon
+        $utcTime = $localTime->timezone('UTC'); // Convert to UTC
+
+        $event->update([
+            'title' => $request->title,
+            'time' => $utcTime->format('Y-m-d H:i:s'), // Store in UTC format
+        ]);
+    } else {
+        $event->update($request->only(['title']));
+    }
+
+    Log::info('Event updated', ['event' => $event]);
+
+    return response()->json(['message' => 'Event updated successfully', 'event' => $event]);
+}
+
+    
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy($id)
     {
-        $event = events::where('id', $id)->where('userid', Auth::id())->first();
+        $event = events::find($id);
+        // ::where('id', $id)->where('userid', Auth::id())->first();
 
         if (!$event) {
             return response()->json(['message' => 'Event not found'], 404);

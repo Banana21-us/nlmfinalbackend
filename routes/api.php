@@ -16,6 +16,8 @@ use App\Models\designation;
 use App\Http\Controllers\LeaveReqController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\CalendardaysController;
+use App\Http\Controllers\RequestfileController;
+
 // Protected Route (Requires Authentication via Sanctum)
 // Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 //     return $request->user();
@@ -61,8 +63,11 @@ Route::apiResource('department', DepartmentController::class);
 Route::apiResource('designation', DesignationController::class);
 Route::apiResource('position', PositionController::class);
 Route::apiResource('announcements', AnnouncementController::class);
+Route::apiResource('requestfile', RequestfileController::class);
 
 Route::apiResource('events', EventsController::class);
+// Route::get('/events/{id}', [EmployeEventsControlleresController::class, 'show']);
+Route::get('/events/user/{userId}', [EventsController::class, 'getEventsByUserId']);
 
 Route::post('/upload', function (Request $request) {
     if ($request->hasFile('file')) {
