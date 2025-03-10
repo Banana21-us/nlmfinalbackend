@@ -13,7 +13,28 @@ class RequestfileController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index() 
+    // public function index() 
+    // {
+    //     $users = User::leftJoin('requestfiles', 'users.id', '=', 'requestfiles.userid')
+    //         ->select('users.id as userid', 'users.name', 'requestfiles.id', 'requestfiles.description', 'requestfiles.file', 'requestfiles.time')
+    //         ->get()
+    //         ->groupBy('name')
+    //         ->map(function ($files, $name) {
+    //             $userid = $files->first()->userid ?? null; // Get user ID even if no files exist
+                
+    //             return [
+    //                 'userid' => $userid,
+    //                 'name' => $name,
+    //                 'files' => $files->whereNotNull('id')->map(function ($file) {
+    //                     return collect($file)->except(['name', 'userid']);
+    //                 })->values()
+    //             ];
+    //         });
+    
+    //     return response()->json($users);
+    // }
+
+    public function bysoa() 
     {
         $users = User::leftJoin('requestfiles', 'users.id', '=', 'requestfiles.userid')
             ->select('users.id as userid', 'users.name', 'requestfiles.id', 'requestfiles.description', 'requestfiles.file', 'requestfiles.time')
@@ -22,19 +43,64 @@ class RequestfileController extends Controller
             ->map(function ($files, $name) {
                 $userid = $files->first()->userid ?? null; // Get user ID even if no files exist
                 
-                return [
-                    'userid' => $userid,
-                    'name' => $name,
-                    'files' => $files->whereNotNull('id')->map(function ($file) {
+                $matchingFiles = $files->whereNotNull('id')
+                    ->where('description', '=', 'Statement of Account')
+                    ->map(function ($file) {
                         return collect($file)->except(['name', 'userid']);
-                    })->values()
-                ];
+                    })->values();
+                
+                if ($matchingFiles->isEmpty()) {
+                    return [
+                        'userid' => $userid,
+                        'name' => $name,
+                        'message' => 'No request files found for this user',
+                        'files' => []
+                    ];
+                } else {
+                    return [
+                        'userid' => $userid,
+                        'name' => $name,
+                        'files' => $matchingFiles
+                    ];
+                }
             });
-    
+        
         return response()->json($users);
     }
-    
 
+    public function bynotsoa() 
+    {
+        $users = User::leftJoin('requestfiles', 'users.id', '=', 'requestfiles.userid')
+            ->select('users.id as userid', 'users.name', 'requestfiles.id', 'requestfiles.description', 'requestfiles.file', 'requestfiles.time')
+            ->get()
+            ->groupBy('name')
+            ->map(function ($files, $name) {
+                $userid = $files->first()->userid ?? null; // Get user ID even if no files exist
+                
+                $matchingFiles = $files->whereNotNull('id')
+                    ->where('description', '!=', 'Statement of Account')
+                    ->map(function ($file) {
+                        return collect($file)->except(['name', 'userid']);
+                    })->values();
+                
+                if ($matchingFiles->isEmpty()) {
+                    return [
+                        'userid' => $userid,
+                        'name' => $name,
+                        'message' => 'No request files found for this user',
+                        'files' => []
+                    ];
+                } else {
+                    return [
+                        'userid' => $userid,
+                        'name' => $name,
+                        'files' => $matchingFiles
+                    ];
+                }
+            });
+        
+        return response()->json($users);
+    }
 
 
 
@@ -65,15 +131,26 @@ class RequestfileController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($userid)
+    public function getrecordsByUserId($userid) 
     {
-        $requestfiles = Requestfile::where('userid', $userid)->get();
-
-        if ($requestfiles->isEmpty()) {
-            return response()->json(['message' => 'No request files found for this user'], 404);
-        }
-
-        return response()->json($requestfiles);
+        $user = User::leftJoin('requestfiles', 'users.id', '=', 'requestfiles.userid')
+            ->select('users.id as userid', 'users.name', 'requestfiles.id', 'requestfiles.description', 'requestfiles.file', 'requestfiles.time')
+            ->where('users.id', $userid)
+            ->get()
+            ->groupBy('name')
+            ->map(function ($files, $name) {
+                $userid = $files->first()->userid ?? null; // Get user ID even if no files exist
+                
+                return [
+                    'userid' => $userid,
+                    'name' => $name,
+                    'files' => $files->whereNotNull('id')->map(function ($file) {
+                        return collect($file)->except(['name', 'userid']);
+                    })->values()
+                ];
+            });
+        
+        return response()->json($user);
     }
 
 

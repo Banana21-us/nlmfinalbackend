@@ -17,7 +17,7 @@ use App\Http\Controllers\LeaveReqController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\CalendardaysController;
 use App\Http\Controllers\RequestfileController;
-
+use App\Http\Controllers\NotificationController;
 // Protected Route (Requires Authentication via Sanctum)
 // Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 //     return $request->user();
@@ -64,6 +64,16 @@ Route::apiResource('designation', DesignationController::class);
 Route::apiResource('position', PositionController::class);
 Route::apiResource('announcements', AnnouncementController::class);
 Route::apiResource('requestfile', RequestfileController::class);
+Route::get('/filerecords', [RequestfileController::class, 'bynotsoa']);
+Route::get('/soarecords', [RequestfileController::class, 'bysoa']);
+Route::get('/requestfile/records/{userId}', [RequestfileController::class, 'getrecordsByUserId']);
+
+Route::get('/notify-exec-secretary', [NotificationController::class, 'notifyExecutiveSecretary']);
+Route::post('/notifications', [NotificationController::class, 'store']);
+Route::get('/notifications', [NotificationController::class, 'index']);
+Route::put('/notifications/{id}/read', [NotificationController::class, 'update']);
+Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+Route::get('/notifications/unread-count/{userId}', [NotificationController::class, 'getUnreadNotificationCount']);
 
 Route::apiResource('events', EventsController::class);
 // Route::get('/events/{id}', [EmployeEventsControlleresController::class, 'show']);

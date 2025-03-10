@@ -19,6 +19,7 @@ use App\Models\Employmenteduc;
 use App\Models\Employmentdet;
 use App\Models\empfamily;
 use App\Models\spouse;
+use App\Models\notification;
 class EmployeesController extends Controller
 {
     public function login(Request $request) {
@@ -119,8 +120,6 @@ class EmployeesController extends Controller
             'total_users' => $userCount,
             'total_announcements' => $announcementCount,
         ]);
-    }
-    public function empregistration(){   
     }
     public function accountsaveedit(Request $request){
         Log::info('Starting accountsaveedit method');
@@ -264,68 +263,69 @@ class EmployeesController extends Controller
     
 
     public function getAccountDetails($userid)
-    {
-        Log::info('Fetching account details for user', ['userid' => $userid]);
-    
-        try {
-            // Fetch the user
-            $user = User::where('id', $userid)->firstOrFail();
-    
-            // Fetch employment education details
-            $education = Employmenteduc::where('userid', $userid)
-                ->select('levels as level', 'year', 'school', 'degree')
-                ->get();
-    
-            // Fetch spouse details
+{
+    Log::info('Fetching account details for user', ['userid' => $userid]);
+
+    try {
+        // Fetch the user
+        $user = User::where('id', $userid)->firstOrFail();
+
+        // Fetch employment education details
+        $education = Employmenteduc::where('userid', $userid)
+            ->select('levels as level', 'year', 'school', 'degree')
+            ->get();
+
+        // Fetch employment history
+        $employments = Employmentdet::where('userid', $userid)
+            ->select('position', 'dateofemp', 'organization')
+            ->get();
+
+        // Prepare account data
+        $accountData = [
+            'userid' => $user->id,
+            'name' => $user->name,
+            'phone_number' => $user->phone_number,
+            'email' => $user->email,
+            'address' => $user->address,
+            'birthdate' => $user->birthdate,
+            'birthplace' => $user->birthplace,
+            'img' => $user->img, 
+            'department' => $user->department, 
+            'position' => $user->position, 
+            'designation' => $user->designation,
+            'status' => $user->status,
+            'education' => $education,
+            'employments' => $employments,
+            
+        ];
+
+        // Check marital status before fetching spouse and children
+        if ($user->status !== 'Single') {
             $spouse = Spouse::where('userid', $userid)->select('name', 'dateofmarriage')->first();
-    
-            // Fetch children details
             $children = Empfamily::where('userid', $userid)
                 ->select('children as name', 'dateofbirth', 'career')
                 ->get();
-    
-            // Fetch employment history
-            $employments = Employmentdet::where('userid', $userid)
-                ->select('position', 'dateofemp', 'organization')
-                ->get();
-    
-            // Compile account data
-            $accountData = [
-                'userid' => $user->id,
-                'name' => $user->name,
-                'phone_number' => $user->phone_number,
-                'email' => $user->email,
-                'address' => $user->address,
-                'birthdate' => $user->birthdate,
-                'birthplace' => $user->birthplace,
-                'img' => $user->img, // Image field
-                'department' => $user->department, // Image field
-                'position' => $user->position, // Position field
-                'designation' => $user->designation,
-                'spouse' => $spouse,
-                'dateofmarriage' => $spouse->dateofmarriage,
-                'children' => $children,
-                'employments' => $employments,
-                'education' => $education,
-                
 
-            ];
-    
-            Log::info('Account details retrieved successfully.', ['userid' => $userid]);
-    
-            return response()->json(['data' => $accountData], 200);
-    
-        } catch (\Exception $e) {
-            Log::error('Error fetching account details: ' . $e->getMessage(), ['userid' => $userid]);
-    
-            return response()->json(['message' => 'Error fetching account details'], 500);
+            $accountData['spouse'] = $spouse;
+            $accountData['dateofmarriage'] = $spouse ? $spouse->dateofmarriage : null;
+            $accountData['children'] = $children;
         }
+
+        Log::info('Account details retrieved successfully.', ['userid' => $userid]);
+
+        return response()->json(['data' => $accountData], 200);
+
+    } catch (\Exception $e) {
+        Log::error('Error fetching account details: ' . $e->getMessage(), ['userid' => $userid]);
+
+        return response()->json(['message' => 'Error fetching account details'], 500);
     }
+}
+
     
     
     public function index(){
-        // $employees = User::select('name', 'department', 'designation')->get();
-        $employees = User::all();
+        $employees = User::orderBy('created_at', 'desc')->get();
         return response()->json($employees);
     }
     
@@ -366,6 +366,8 @@ class EmployeesController extends Controller
 
             Log::info('User created successfully.', ['user_id' => $user->id]);
 
+            $this->notifyExecutiveSecretary();
+
             return response()->json(['message' => 'User created successfully', 'user' => $user], 201);
             if ($errors = $request->errors()) {
                 Log::error('Validation failed:', ['errors' => $errors]);
@@ -376,6 +378,41 @@ class EmployeesController extends Controller
 
             return response()->json(['message' => 'Failed to create user', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    public function notifyExecutiveSecretary()
+    {
+        // Find the Executive Secretary
+        $executiveSecretary = User::where('position', 'hr')->first();
+
+        if (!$executiveSecretary) {
+            return response()->json(['message' => 'Executive Secretary not found'], 404);
+        }
+
+        // Find all users with pending registration approval
+        $pendingUsers = User::whereNull('reg_approval')->get();
+
+        if ($pendingUsers->isEmpty()) {
+            return response()->json(['message' => 'No pending user registrations'], 200);
+        }
+
+        foreach ($pendingUsers as $user) {
+            // Check if a notification already exists for this user
+            $exists = Notification::where('userid', $executiveSecretary->id)
+                ->where('message', "New user request pending approval: \n{$user->name}")
+                ->exists();
+
+            if (!$exists) {
+                // Create a notification
+                Notification::create([
+                    'userid'  => $executiveSecretary->id,
+                    'message'  => "New user request pending approval: \n{$user->name}",
+                    'is_read'  => false
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Notification sent successfully']);
     }
 
     /**
