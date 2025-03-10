@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;    
 use App\Http\Requests\StorenotificationRequest;
 use App\Http\Requests\UpdatenotificationRequest;
-
+use Illuminate\Support\Facades\Log;
 class NotificationController extends Controller
 {
     /**
@@ -15,10 +15,27 @@ class NotificationController extends Controller
      */
 
 
-    public function index()
-    {
-        return response()->json(notification::all());
+     public function getnotif($userId)
+{
+    if (!$userId) {
+        return response()->json(['message' => 'User ID is required'], 400);
     }
+
+    \Log::info('Fetching notifications for user ID:', ['userId' => $userId]);
+
+    $notifications = Notification::where('userid', $userId)
+        ->whereIn('type', ['User Request', 'Announcement Notification'])
+        ->get();
+
+    \Log::info('Notifications fetched:', ['notifications' => $notifications]);
+
+    return response()->json([
+        'user_requests' => $notifications->where('type', 'User Request')->values(),
+        'announcements' => $notifications->where('type', 'Announcement Notification')->values(),
+    ]);
+}
+
+     
     /**
      * Store a newly created resource in storage.
      */

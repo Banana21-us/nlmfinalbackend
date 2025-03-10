@@ -383,7 +383,7 @@ class EmployeesController extends Controller
     public function notifyExecutiveSecretary()
     {
         // Find the Executive Secretary
-        $executiveSecretary = User::where('position', 'hr')->first();
+        $executiveSecretary = User::where('position', 'Executive Secretary')->first();
 
         if (!$executiveSecretary) {
             return response()->json(['message' => 'Executive Secretary not found'], 404);
@@ -406,8 +406,10 @@ class EmployeesController extends Controller
                 // Create a notification
                 Notification::create([
                     'userid'  => $executiveSecretary->id,
+                    'type'  => "User Request",
                     'message'  => "New user request pending approval: \n{$user->name}",
-                    'is_read'  => false
+                    'is_read'  => false,
+                    'created_at' => now(),
                 ]);
             }
         }

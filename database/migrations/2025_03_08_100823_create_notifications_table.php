@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('userid'); // Foreign key to users table
+            $table->text('message'); // Notification message
+            $table->text('type')->nullable(); 
+            $table->boolean('is_read')->default(0); // Status: 0 (unread), 1 (read)\
             $table->timestamps();
         });
     }

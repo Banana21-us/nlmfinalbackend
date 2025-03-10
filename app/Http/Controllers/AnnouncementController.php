@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\notification;
 use App\Models\Announcement;
 use Illuminate\Http\Request;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AnnouncementController extends Controller
 {
@@ -19,25 +23,57 @@ class AnnouncementController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-           'announcement' => 'required|string|max:5000',
 
-        ]);
-        
-            
-        $announcement = Announcement::create([
-            'title' => $request->title,
-            'announcement' => $request->announcement,
-        ]);
+public function store(Request $request)
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'announcement' => 'required|string|max:5000',
+    ]);
 
-        return response()->json([
-            'message' => 'Announcement created successfully',
-            'data' => $announcement
-        ], 201);
+    Log::info('Creating a new announcement', ['title' => $request->title]);
+
+    $announcement = Announcement::create([
+        'title' => $request->title,
+        'announcement' => $request->announcement,
+    ]);
+
+    // Retrieve all users where reg_approval is NOT NULL
+    $users = User::whereNotNull('reg_approval')->get();
+
+    if ($users->isEmpty()) {
+        Log::warning('No users found with reg_approval');
+        return response()->json(['message' => 'No users found'], 404);
     }
+
+    foreach ($users as $user) {
+        // Check if a notification already exists for this user
+        $exists = notification::where('userid', $user->id)
+            ->where('message', "New announcement posted: \n{$announcement->title}")
+            ->exists();
+
+        if (!$exists) {
+            // Create a notification
+            notification::create([
+                'userid' => $user->id,
+                'type' => "Announcement Notification",
+                'message' => "New announcement posted: \n{$announcement->title}",
+                'is_read' => false
+            ]);
+
+            Log::info("Notification created for user", ['user_id' => $user->id]);
+        } else {
+            Log::info("Notification already exists for user", ['user_id' => $user->id]);
+        }
+    }
+
+    Log::info("Announcement process completed successfully", ['announcement_id' => $announcement->id]);
+
+    return response()->json(['message' => 'Announcement created and notifications sent']);
+}
+
+
+
 
     /**
      * Display the specified resource.

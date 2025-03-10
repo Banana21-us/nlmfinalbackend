@@ -9,9 +9,50 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Log;
 use App\Models\LeaveReq;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\DB;
 class LeaveReqController extends Controller
+{   
+    public function countLeaveAndEvents($userid)
 {
+    $today = now()->toDateString(); // Get today's date (YYYY-MM-DD)
+
+    // Count leave requests by status
+    $leaveCounts = DB::table('leave_reqs')
+        ->selectRaw("
+            SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
+            SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) AS approved,
+            SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) AS rejected
+        ")
+        ->where('userid', $userid)
+        ->first();
+
+    // Count events happening today
+    $eventCount = DB::table('events')
+        ->where('userid', $userid)
+        ->whereDate('time', $today)
+        ->count();
+
+    return response()->json([
+        'pending'  => $leaveCounts->pending ?? 0,
+        'approved' => $leaveCounts->approved ?? 0,
+        'rejected' => $leaveCounts->rejected ?? 0,
+        'events_today' => $eventCount
+    ]);
+}
+
+//     public function countLeaveRequests($userid)
+//     {
+//         $counts = LeaveReq::where('userid', $userid)
+//             ->selectRaw("status, COUNT(*) as count")
+//             ->groupBy('status')
+//             ->pluck('count', 'status');
+
+//         return response()->json([
+//             'Pending' => $counts['Pending'] ?? 0,
+//             'Approved' => $counts['Approved'] ?? 0,
+//             'Rejected' => $counts['Rejected'] ?? 0,
+//         ]);
+// }
     // Get all leave requests
     public function index()
     {

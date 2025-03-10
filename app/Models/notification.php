@@ -12,6 +12,7 @@ class notification extends Model
     protected $fillable = [
         'userid',
         'message',
+        'type',
         'is_read',
     ];
 
@@ -19,7 +20,7 @@ class notification extends Model
         'is_read' => 'boolean',
     ];
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     // Relationship with User
     public function user()

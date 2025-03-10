@@ -57,21 +57,23 @@ Route::delete('/leaverequests/{id}', [LeaveReqController::class, 'destroy']);
 Route::put('/leave-requests/userupdate/{id}', [LeaveReqController::class, 'updateDetails']);
 Route::put('/leave-reqs/{id}/approve', [LeaveReqController::class, 'approveLeaveRequest']);
 Route::put('/leave-reqs/{id}/reject', [LeaveReqController::class, 'rejectLeaveRequest']);
+Route::get('/leave-count/{userid}', [LeaveReqController::class, 'countLeaveAndEvents']);
 
 Route::apiResource('leave-types', LeaveTypeController::class);
 Route::apiResource('department', DepartmentController::class);
 Route::apiResource('designation', DesignationController::class);
 Route::apiResource('position', PositionController::class);
 Route::apiResource('announcements', AnnouncementController::class);
+
 Route::apiResource('requestfile', RequestfileController::class);
 Route::get('/filerecords', [RequestfileController::class, 'bynotsoa']);
 Route::get('/soarecords', [RequestfileController::class, 'bysoa']);
 Route::get('/requestfile/records/{userId}', [RequestfileController::class, 'getrecordsByUserId']);
 
+Route::get('/notifications/{userId}', [NotificationController::class, 'getnotif']); 
 Route::get('/notify-exec-secretary', [NotificationController::class, 'notifyExecutiveSecretary']);
 Route::post('/notifications', [NotificationController::class, 'store']);
 Route::get('/notifications', [NotificationController::class, 'index']);
-Route::put('/notifications/{id}/read', [NotificationController::class, 'update']);
 Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 Route::get('/notifications/unread-count/{userId}', [NotificationController::class, 'getUnreadNotificationCount']);
 
