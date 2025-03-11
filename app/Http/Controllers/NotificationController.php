@@ -23,15 +23,21 @@ class NotificationController extends Controller
 
     \Log::info('Fetching notifications for user ID:', ['userId' => $userId]);
 
-    $notifications = Notification::where('userid', $userId)
-        ->whereIn('type', ['User Request', 'Announcement Notification'])
+    $notifications = notification::where('userid', $userId)
+        ->whereIn('type', ['User Request', 'Announcements','Statement of Account','Service Records','Leave Request','Leave Approval'])
+        ->orderBy('created_at', 'desc')
         ->get();
-
+    \Log::info('Sorted notifications:', ['notifications' => $notifications]);
     \Log::info('Notifications fetched:', ['notifications' => $notifications]);
 
     return response()->json([
         'user_requests' => $notifications->where('type', 'User Request')->values(),
-        'announcements' => $notifications->where('type', 'Announcement Notification')->values(),
+        'announcements' => $notifications->where('type', 'Announcements')->values(),
+        'statementofaccouunt' => $notifications->where('type', 'Statement of Account')->values(),
+        'servicerecords' => $notifications->where('type', 'Service Records')->values(),
+        'leavereq' => $notifications->where('type', 'Leave Request')->values(),
+        'leaveapproval'=> $notifications->where('type', 'Leave Approval')->values(),
+
     ]);
 }
 

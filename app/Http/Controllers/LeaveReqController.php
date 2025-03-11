@@ -70,6 +70,14 @@ class LeaveReqController extends Controller
             'reason' => 'nullable|string|max:1000',
         ]);
     
+        // Fetch the user's name
+        $user = DB::table('users')->where('id', $request->userid)->first();
+    
+        // Fetch the Executive Secretary's ID
+        $executiveSecretary = DB::table('users')
+            ->where('position', 'Executive Secretary')
+            ->first();
+    
         $leaveReq = LeaveReq::create([
             'userid' => $request->userid,
             'leavetypeid' => $request->leavetypeid,
@@ -79,8 +87,22 @@ class LeaveReqController extends Controller
             'status' => 'Pending' // Automatically set status to Pending
         ]);
     
+        // Create a notification for the Executive Secretary
+        if ($executiveSecretary) {
+            DB::table('notifications')->insert([
+                'userid' => $executiveSecretary->id, // Notify the Executive Secretary
+                'message' => "{$user->name} has submitted a leave request, pending approval.",
+                'type' => 'Leave Request',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    
         return response()->json($leaveReq, 201);
     }
+    
+
     
 
 
@@ -140,24 +162,41 @@ class LeaveReqController extends Controller
     }
     
     public function approveLeaveRequest($id)
-    {
-        $leaveReq = LeaveReq::find($id);
+{
+    $leaveReq = LeaveReq::find($id);
 
-        if (!$leaveReq) {
-            return response()->json(['message' => 'Leave request not found'], 404);
-        }
-
-        // Check if the status is already approved
-        if ($leaveReq->status === 'Approved') {
-            return response()->json(['message' => 'Leave request is already approved'], 400);
-        }
-
-        $leaveReq->update([
-            'status' => 'Approved',
-        ]);
-
-        return response()->json(['message' => 'Leave request approved successfully'], 200);
+    if (!$leaveReq) {
+        return response()->json(['message' => 'Leave request not found'], 404);
     }
+
+    // Check if the status is already approved
+    if ($leaveReq->status === 'Approved') {
+        return response()->json(['message' => 'Leave request is already approved'], 400);
+    }
+
+    // Update the leave request status to Approved
+    $leaveReq->update([
+        'status' => 'Approved',
+    ]);
+
+    // Fetch the user's name who requested the leave
+    $user = DB::table('users')->where('id', $leaveReq->userid)->first();
+
+    // Send a notification to the user
+    if ($user) {
+        DB::table('notifications')->insert([
+            'userid' => $leaveReq->userid, // Notify the user who requested leave
+            'message' => "Your leave request has been approved.",
+            'type' => 'Leave Approval',
+            'is_read' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    return response()->json(['message' => 'Leave request approved successfully'], 200);
+}
+
 
     
     public function rejectLeaveRequest($id)

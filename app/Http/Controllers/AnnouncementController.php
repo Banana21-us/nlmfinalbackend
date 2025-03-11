@@ -56,7 +56,7 @@ public function store(Request $request)
             // Create a notification
             notification::create([
                 'userid' => $user->id,
-                'type' => "Announcement Notification",
+                'type' => "Announcements",
                 'message' => "New announcement posted: \n{$announcement->title}",
                 'is_read' => false
             ]);

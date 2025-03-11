@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Http\Requests\StoreRequestfileRequest;
 use App\Http\Requests\UpdateRequestfileRequest;
 use Illuminate\Http\Request;
+use App\Models\notification;
 
 class RequestfileController extends Controller
 {
@@ -107,6 +108,26 @@ class RequestfileController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'userid' => 'required|exists:users,id',
+    //         'description' => 'required|string|max:255',
+    //         'file' => 'required|string|max:5000',
+    //     ]);
+
+    //     $requestfile = Requestfile::create([
+    //         'userid' => $request->input('userid'),
+    //         'description' => $request->input('description'),
+    //         'file' => $request->input('file'),
+    //         'time' => now(),
+    //     ]);
+
+    //     return response()->json([
+    //         'message' => 'Request file added successfully.',
+    //         'data' => $requestfile
+    //     ], 201);
+    // }
     public function store(Request $request)
     {
         $request->validate([
@@ -114,20 +135,31 @@ class RequestfileController extends Controller
             'description' => 'required|string|max:255',
             'file' => 'required|string|max:5000',
         ]);
-
+    
+        // Create the request file
         $requestfile = Requestfile::create([
             'userid' => $request->input('userid'),
             'description' => $request->input('description'),
             'file' => $request->input('file'),
             'time' => now(),
         ]);
-
+    
+        // Create a notification for the user
+        notification::create([
+            'userid' => $request->input('userid'),
+            'message' => 'Your ' . $request->input('description') . ' has been posted.',
+            'type' => $request->input('description'),
+            'is_read' => 0, // Mark as unread
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    
         return response()->json([
-            'message' => 'Request file added successfully.',
+            'message' => 'Request file added successfully, and notification sent.',
             'data' => $requestfile
         ], 201);
     }
-
+    
     /**
      * Display the specified resource.
      */
