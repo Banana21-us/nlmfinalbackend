@@ -12,6 +12,5 @@ class position extends Model
     protected $fillable =[
         'id',
         'name',
-        'salary'
     ];
 }

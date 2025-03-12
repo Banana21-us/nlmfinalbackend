@@ -25,7 +25,6 @@ class PositionController extends Controller
     {
         $pos = position::create([
             'name' => $request->name,
-            'salary' => $request->salary
         ]);
 
 
@@ -49,7 +48,6 @@ class PositionController extends Controller
 
         $formField = $request->validate([
             'name' => 'required|max:255',
-            'salary' => 'required|max:255',
         ]);
 
         $position->update($formField);
