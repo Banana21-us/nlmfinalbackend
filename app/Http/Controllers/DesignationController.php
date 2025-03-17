@@ -62,6 +62,6 @@ class DesignationController extends Controller
     {
         $designation->delete();
 
-        return response()->json(['message' => 'Department deleted successfully!']);
+        return response()->json(['message' => 'Designation deleted successfully!']);
     }
 }

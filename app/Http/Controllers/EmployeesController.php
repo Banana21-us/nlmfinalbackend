@@ -39,8 +39,8 @@ class EmployeesController extends Controller
             ], 401);
         }
 
-        $token = $admin->createToken($admin->name);
-
+        // $token = $admin->createToken($admin->name);
+        $token = $admin->createToken('AuthToken');
         Log::info('Login successful.', ['admin_id' => $admin->id]);
 
         return response()->json([
@@ -459,6 +459,8 @@ public function acceptemployee(Request $request, $id){
         'department' => 'required|string|max:255',
         'position' => 'required|string|max:255',
         'designation' => 'required|string|max:255',
+        'work_status' => 'required|string|max:255',
+        'category' => 'required|string|max:255',
     ]);
 
     Log::info("Validation passed", ['validated_data' => $validatedData]);
@@ -467,6 +469,8 @@ public function acceptemployee(Request $request, $id){
     $employee->department = $request->department;
     $employee->position = $request->position;
     $employee->designation = $request->designation;
+    $employee->work_status = $request->work_status;
+    $employee->category = $request->category;
     $employee->reg_approval = now()->toDateString(); 
 
     $employee->save();

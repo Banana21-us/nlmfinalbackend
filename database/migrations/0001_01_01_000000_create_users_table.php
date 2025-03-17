@@ -23,6 +23,8 @@ return new class extends Migration
             $table->string('department')->nullable(); // Use 'string' for birthplace
             $table->string('position')->nullable(); // Use 'string' for birthplace
             $table->string('designation')->nullable(); // Use 'string' for birthplace
+            $table->string('work_status')->nullable();
+            $table->string('category')->nullable();  
             $table->string('img')->nullable();
             $table->date('reg_approval')->nullable();
             $table->string('email')->unique();

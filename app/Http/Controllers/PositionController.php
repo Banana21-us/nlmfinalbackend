@@ -14,7 +14,7 @@ class PositionController extends Controller
      */
     public function index()
     {
-        $position = position::all();
+        $position = position::orderBy('name', 'asc')->get();
         return response()->json($position);
     }
 

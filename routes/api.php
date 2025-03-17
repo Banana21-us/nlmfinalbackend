@@ -18,6 +18,10 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\CalendardaysController;
 use App\Http\Controllers\RequestfileController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\WorkstatusController;
+
+
 // Protected Route (Requires Authentication via Sanctum)
 // Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 //     return $request->user();
@@ -25,11 +29,13 @@ use App\Http\Controllers\NotificationController;
 // Route::middleware(['auth:sanctum'])->group(function () {
 //     Route::post('/users', [EmployeesController::class, 'store']);
 // });
+// Route::post('/login',[EmployeesController::class,'login']);
+Route::post('/login', [EmployeesController::class, 'login'])->middleware('throttle:5,1');
 
-// Route::middleware(['auth:sanctum'])->group(function () {
-// });
-Route::post('/login',[EmployeesController::class,'login']);
 Route::post('/regusers', [EmployeesController::class, 'store']);
+// Route::middleware(['auth:sanctum'])->group(function () {
+
+
 Route::get('/users/count', [EmployeesController::class, 'count']);
 
 
@@ -61,6 +67,8 @@ Route::get('/leave-count/{userid}', [LeaveReqController::class, 'countLeaveAndEv
 
 Route::apiResource('leave-types', LeaveTypeController::class);
 Route::apiResource('department', DepartmentController::class);
+Route::apiResource('category', CategoryController::class);
+Route::apiResource('workstatus', WorkstatusController::class);
 Route::apiResource('designation', DesignationController::class);
 Route::apiResource('position', PositionController::class);
 Route::apiResource('announcements', AnnouncementController::class);
@@ -100,6 +108,8 @@ Route::get('assets/userPic/{filename}', function ($filename) {
     
         abort(404);
 });
+
+// });
 
 Route::middleware('auth:sanctum')->post('/logout',[EmployeesController::class,'logout']);
 

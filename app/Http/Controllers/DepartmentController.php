@@ -15,7 +15,7 @@ class DepartmentController extends Controller
     public function index()
     {
         // You can list all departments here (if needed)
-        $departments = Department::all();
+        $departments = Department::orderBy('name', 'asc')->get();
         return response()->json($departments);
             
     }
