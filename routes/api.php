@@ -22,6 +22,8 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\WorkstatusController;
 
 
+
+
 // Protected Route (Requires Authentication via Sanctum)
 // Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 //     return $request->user();
@@ -89,6 +91,9 @@ Route::apiResource('requestfile', RequestfileController::class);
 Route::get('/filerecords', [RequestfileController::class, 'bynotsoa']);
 Route::get('/soarecords', [RequestfileController::class, 'bysoa']);
 Route::get('/requestfile/records/{userId}', [RequestfileController::class, 'getrecordsByUserId']);
+
+Route::post('/upload-files', [RequestfileController::class, 'uploadFiles']);
+//uploadIMG.....
 
 Route::get('/notifications/{userId}', [NotificationController::class, 'getnotif']); 
 Route::get('/notify-exec-secretary', [NotificationController::class, 'notifyExecutiveSecretary']);

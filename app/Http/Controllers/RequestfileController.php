@@ -8,12 +8,72 @@ use App\Http\Requests\StoreRequestfileRequest;
 use App\Http\Requests\UpdateRequestfileRequest;
 use Illuminate\Http\Request;
 use App\Models\notification;
-
+use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 class RequestfileController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
+
+     public function uploadFiles(Request $request)
+     {
+         // Validate request
+         $request->validate([
+             'files.*' => 'required|file|max:2048' // Validate files, no need to validate 'description'
+         ]);
+     
+         $uploadedFiles = $request->file('files');
+         $savedFiles = [];
+     
+         foreach ($uploadedFiles as $file) {
+             $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME); // Extract filename without extension
+     
+             // Check if filename matches a user ID
+             $user = User::find($filename);
+     
+             if ($user) {
+                 // Ensure the directory exists
+                 $destinationPath = public_path("storage/uploads/user_{$user->id}");
+                 if (!file_exists($destinationPath)) {
+                     mkdir($destinationPath, 0777, true); // Create directory if not exists
+                 }
+     
+                 // Generate a unique file name to prevent overwriting
+                 $uniqueFileName = now()->format('m-d-Y') . '_' . $file->getClientOriginalName();
+                 $filePath = "storage/uploads/user_{$user->id}/" . $uniqueFileName;
+                    
+                 // Move file to public storage directory
+                 $file->move($destinationPath, $uniqueFileName);
+     
+                 // Generate a public URL for the file
+                 $fileUrl = asset($filePath);
+     
+                 // Save to database with a clickable link
+                 RequestFile::create([
+                     'userid' => $user->id,
+                     'description' => 'Statement of Account',
+                     'file' => "<p><a href='$fileUrl'>$uniqueFileName</a></p>",
+                     'time' => Carbon::now()
+                 ]);
+     
+                 $savedFiles[] = [
+                     'user_id' => $user->id,
+                     'file_name' => $uniqueFileName,
+                     'file_url' => $fileUrl,
+                 ];
+             }
+         }
+     
+         return response()->json([
+             'message' => 'Files uploaded successfully!',
+             'uploaded_files' => $savedFiles
+         ]);
+     }
+     
+
+
+
     // public function index() 
     // {
     //     $users = User::leftJoin('requestfiles', 'users.id', '=', 'requestfiles.userid')
