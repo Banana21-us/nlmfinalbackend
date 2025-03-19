@@ -10,8 +10,64 @@ use Illuminate\Support\Facades\Log;
 use App\Models\LeaveReq;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\User;
 class LeaveReqController extends Controller
 {   
+
+    public function getexecutivesec() 
+    {
+        $leaveRequests = LeaveReq::with(['departmentHead', 'user', 'leaveType'])
+            ->where('dept_head', 'Approved') // Filter for approved requests
+            ->get();
+
+        return response()->json($leaveRequests);
+    }
+
+    public function getbypresident() 
+    {
+        $leaveRequests = LeaveReq::with(['departmentHead', 'user', 'leaveType'])
+            ->where('exec_sec', 'Approved') // Filter for approved requests
+            ->get();
+
+        return response()->json($leaveRequests);
+    }
+
+
+
+    public function getByDHead($dheadId)
+    {
+        $leaveRequests = LeaveReq::with(['departmentHead', 'user','leaveType']) // Eager load user and department head
+            ->where('DHead', $dheadId)
+            ->get();
+
+        return response()->json($leaveRequests);
+    }
+
+
+    public function getDepartmentHeads()
+    {
+        // Query the users table to get the department heads
+        $departmentHeads = User::where(function($query) {
+            // For Administrators
+            $query->where('department', 'Administrators')
+                  ->where('position', 'Treasurer');
+        })
+        ->orWhere(function($query) {
+            // For Directors
+            $query->where('department', 'Directors')
+                  ->where(function($query) {
+                      $query->where('position', 'LIKE', '%Ministerial%')
+                            ->orWhere('position', 'LIKE', '%Education%')
+                            ->orWhere('position', 'LIKE', '%Communication%')
+                            ->orWhere('position', 'LIKE', '%Spirit of Prophecy%');
+                  });
+        })
+        ->select('id', 'name')
+        ->get();
+
+        // Return the results (you can return as JSON or pass to a view)
+        return response()->json($departmentHeads);
+    }
     public function countLeaveAndEvents($userid)
 {
     $today = now()->toDateString(); // Get today's date (YYYY-MM-DD)
@@ -58,53 +114,177 @@ class LeaveReqController extends Controller
     {
         return response()->json(LeaveReq::with(['user', 'leaveType'])->get());
     }
-
-
     public function store(Request $request)
-    {
-        $request->validate([
-            'userid' => 'required|exists:users,id',
-            'leavetypeid' => 'required|exists:leavetypes,id',
-            'from' => 'nullable|date',
-            'to' => 'nullable|date',
-            'reason' => 'nullable|string|max:1000',
-        ]);
-    
-        // Fetch the user's name
-        $user = DB::table('users')->where('id', $request->userid)->first();
-    
-        // Fetch the Executive Secretary's ID
-        $executiveSecretary = DB::table('users')
-            ->where('position', 'Executive Secretary')
-            ->first();
-    
-        $leaveReq = LeaveReq::create([
-            'userid' => $request->userid,
-            'leavetypeid' => $request->leavetypeid,
-            'from' => $request->from,
-            'to' => $request->to,
-            'reason' => $request->reason,
-            'status' => 'Pending' // Automatically set status to Pending
-        ]);
-    
-        // Create a notification for the Executive Secretary
-        if ($executiveSecretary) {
-            DB::table('notifications')->insert([
-                'userid' => $executiveSecretary->id, // Notify the Executive Secretary
-                'message' => "{$user->name} has submitted a leave request, pending approval.",
-                'type' => 'Leave Request',
-                'is_read' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    
-        return response()->json($leaveReq, 201);
+{
+    $request->validate([
+        'userid' => 'required|exists:users,id',
+        'leavetypeid' => 'required|exists:leavetypes,id',
+        'from' => 'required|date',
+        'to' => 'required|date',
+        'reason' => 'nullable|string|max:1000',
+        'DHead' => 'nullable|string|max:1000'
+    ]);
+
+    $user = DB::table('users')->where('id', $request->userid)->first();
+
+    // Determine the requester's role
+    if ($user->department === 'Administrators' && $user->position === 'President') {
+        $dept_head_status = 'Approved';
+        $exec_sec_status = 'Approved';
+        $president_status = 'Approved';
+    } elseif ($user->department === 'Administrators' && stripos($user->position, 'Executive Secretary') !== false) {
+        $dept_head_status = 'Approved';
+        $exec_sec_status = 'Approved';
+        $president_status = 'Pending';
+    }
+     elseif (
+        $user->department === 'Directors' || 
+        ($user->department === 'Administrators' && stripos($user->position, 'Treasurer') !== false)
+    ) { 
+        $dept_head_status = 'Approved';
+        $exec_sec_status = 'Pending';
+        $president_status = 'Pending';
     }
     
+     else {
+        $dept_head_status = 'Pending';
+        $exec_sec_status = 'Pending';
+        $president_status = 'Pending';
+    }
 
-    
+    // Create Leave Request
+    $leaveReq = LeaveReq::create([
+        'userid' => $request->userid,
+        'leavetypeid' => $request->leavetypeid,
+        'from' => $request->from,
+        'to' => $request->to,
+        'reason' => $request->reason,
+        'DHead' => $request->DHead, 
+        'dept_head' => $dept_head_status,
+        'exec_sec' => $exec_sec_status,
+        'president' => $president_status
+    ]);
 
+    // Send Notifications
+    // if ($dept_head_status === 'Pending') {
+    //     $departmentHead = DB::table('users')
+    //         ->where('department', $user->department)
+    //         ->where('position', 'Department Head')
+    //         ->first();
+
+    //     if ($departmentHead) {
+    //         DB::table('notifications')->insert([
+    //             'userid' => $departmentHead->id,
+    //             'message' => "{$user->name} has submitted a leave request, pending your approval.",
+    //             'type' => 'Leave Request',
+    //             'is_read' => 0,
+    //             'created_at' => now(),
+    //             'updated_at' => now(),
+    //         ]);
+    //     }
+    // }
+
+    // if ($exec_sec_status === 'Pending') {
+    //     $executiveSecretary = DB::table('users')
+    //         ->where('position', 'Executive Secretary')
+    //         ->first();
+
+    //     if ($executiveSecretary) {
+    //         DB::table('notifications')->insert([
+    //             'userid' => $executiveSecretary->id,
+    //             'message' => "{$user->name} (Dept Head) has submitted a leave request, pending your approval.",
+    //             'type' => 'Leave Request',
+    //             'is_read' => 0,
+    //             'created_at' => now(),
+    //             'updated_at' => now(),
+    //         ]);
+    //     }
+    // }
+
+    // if ($president_status === 'Pending') {
+    //     $president = DB::table('users')
+    //         ->where('position', 'President')
+    //         ->first();
+
+    //     if ($president) {
+    //         DB::table('notifications')->insert([
+    //             'userid' => $president->id,
+    //             'message' => "{$user->name} (Executive Secretary) has submitted a leave request, pending your approval.",
+    //             'type' => 'Leave Request',
+    //             'is_read' => 0,
+    //             'created_at' => now(),
+    //             'updated_at' => now(),
+    //         ]);
+    //     }
+    // }
+
+    return response()->json($leaveReq, 201);
+}
+
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'userid' => 'required|exists:users,id',
+    //         'leavetypeid' => 'required|exists:leavetypes,id',
+    //         'from' => 'required|date',
+    //         'to' => 'required|date',
+    //         'reason' => 'nullable|string|max:1000',
+    //         'DHead' => 'nullable|string|max:255', // Department Head name input
+    //     ]);
+
+    //     $user = DB::table('users')->where('id', $request->userid)->first();
+
+    //     // Find the Department Head's user ID based on department
+    //     $departmentHead = DB::table('users')
+    //         ->where('name', $request->DHead)
+    //         ->where('department', 'Directors')
+    //         ->first();
+
+    //     // Find the Executive Secretary
+    //     // $executiveSecretary = DB::table('users')
+    //     //     ->where('department', 'Administrators')
+    //     //     ->where('position', 'Executive Secretary')
+    //     //     ->first();
+
+    //     // Create Leave Request
+    //     $leaveReq = LeaveReq::create([
+    //         'userid' => $request->userid,
+    //         'leavetypeid' => $request->leavetypeid,
+    //         'from' => $request->from,
+    //         'to' => $request->to,
+    //         'reason' => $request->reason,
+    //         'DHead' => $request->DHead, // Store department name
+    //         'dept_head' => 'Pending',
+    //         'exec_sec' => 'Pending',
+    //         'president' => 'Pending'
+    //     ]);
+
+    //     // Notify the Department Head
+    //     if ($departmentHead) {
+    //         DB::table('notifications')->insert([
+    //             'userid' => $departmentHead->id, // Notify Department Head
+    //             'message' => "{$user->name} has submitted a leave request, pending your approval.",
+    //             'type' => 'Leave Request',
+    //             'is_read' => 0,
+    //             'created_at' => now(),
+    //             'updated_at' => now(),
+    //         ]);
+    //     }
+
+    //     // Notify the Executive Secretary
+    //     // if ($executiveSecretary) {
+    //     //     DB::table('notifications')->insert([
+    //     //         'userid' => $executiveSecretary->id, // Notify Executive Secretary
+    //     //         'message' => "{$user->name} has submitted a leave request for {$request->DHead}, pending approval.",
+    //     //         'type' => 'Leave Request',
+    //     //         'is_read' => 0,
+    //     //         'created_at' => now(),
+    //     //         'updated_at' => now(),
+    //     //     ]);
+    //     // }
+
+    //     return response()->json($leaveReq, 201);
+    // }
 
     // Get single leave request
    
@@ -162,40 +342,40 @@ class LeaveReqController extends Controller
     }
     
     public function approveLeaveRequest($id)
-{
-    $leaveReq = LeaveReq::find($id);
+    {
+        $leaveReq = LeaveReq::find($id);
 
-    if (!$leaveReq) {
-        return response()->json(['message' => 'Leave request not found'], 404);
-    }
+        if (!$leaveReq) {
+            return response()->json(['message' => 'Leave request not found'], 404);
+        }
 
-    // Check if the status is already approved
-    if ($leaveReq->status === 'Approved') {
-        return response()->json(['message' => 'Leave request is already approved'], 400);
-    }
+        // Check if the dept_head is already approved
+        if ($leaveReq->dept_head === 'Approved') {
+            return response()->json(['message' => 'Leave request is already approved'], 400);
+        }
 
-    // Update the leave request status to Approved
-    $leaveReq->update([
-        'status' => 'Approved',
-    ]);
-
-    // Fetch the user's name who requested the leave
-    $user = DB::table('users')->where('id', $leaveReq->userid)->first();
-
-    // Send a notification to the user
-    if ($user) {
-        DB::table('notifications')->insert([
-            'userid' => $leaveReq->userid, // Notify the user who requested leave
-            'message' => "Your leave request has been approved.",
-            'type' => 'Leave Approval',
-            'is_read' => 0,
-            'created_at' => now(),
-            'updated_at' => now(),
+        // Update the leave request dept_head to Approved
+        $leaveReq->update([
+            'dept_head' => 'Approved',
         ]);
-    }
 
-    return response()->json(['message' => 'Leave request approved successfully'], 200);
-}
+        // Fetch the user's name who requested the leave
+        $user = DB::table('users')->where('id', $leaveReq->userid)->first();
+
+        // Send a notification to the user
+        if ($user) {
+            DB::table('notifications')->insert([
+                'userid' => $leaveReq->userid, // Notify the user who requested leave
+                'message' => "Department Head has approved your leave request.",
+                'type' => 'Leave Approval',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json(['message' => 'Leave request approved successfully'], 200);
+    }
 
 
     
@@ -207,15 +387,162 @@ class LeaveReqController extends Controller
             return response()->json(['message' => 'Leave request not found'], 404);
         }
 
-        // Check if the status is already Rejected
-        if ($leaveReq->status === 'Rejected') {
+        // Check if the dept_head is already Rejected
+        if ($leaveReq->dept_head === 'Rejected') {
             return response()->json(['message' => 'Leave request is already Rejected'], 400);
         }
 
         $leaveReq->update([
-            'status' => 'Rejected',
+            'dept_head' => 'Rejected',
+        ]);
+        
+        $user = DB::table('users')->where('id', $leaveReq->userid)->first();
+        if ($user) {
+            DB::table('notifications')->insert([
+                'userid' => $leaveReq->userid, // Notify the user who requested leave
+                'message' => "Department Head has rejected your leave request.",
+                'type' => 'Leave Rejected',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+        return response()->json(['message' => 'Leave request Rejected successfully'], 200);
+    }
+
+    // exec 
+
+    public function approveLeaveRequestexecsec($id)
+    {
+        $leaveReq = LeaveReq::find($id);
+
+        if (!$leaveReq) {
+            return response()->json(['message' => 'Leave request not found'], 404);
+        }
+
+        // Check if the exec_sec is already approved
+        if ($leaveReq->exec_sec === 'Approved') {
+            return response()->json(['message' => 'Leave request is already approved'], 400);
+        }
+
+        // Update the leave request exec_sec to Approved
+        $leaveReq->update([
+            'exec_sec' => 'Approved',
         ]);
 
+        // Fetch the user's name who requested the leave
+        $user = DB::table('users')->where('id', $leaveReq->userid)->first();
+
+        // Send a notification to the user
+        if ($user) {
+            DB::table('notifications')->insert([
+                'userid' => $leaveReq->userid, // Notify the user who requested leave
+                'message' => "Executive Secretary has approved your leave request.",
+                'type' => 'Leave Approval',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json(['message' => 'Leave request approved successfully'], 200);
+    }
+    public function rejectLeaveRequestexecsec($id)
+    {
+        $leaveReq = LeaveReq::find($id);
+
+        if (!$leaveReq) {
+            return response()->json(['message' => 'Leave request not found'], 404);
+        }
+
+        // Check if the exec_sec is already Rejected
+        if ($leaveReq->exec_sec === 'Rejected') {
+            return response()->json(['message' => 'Leave request is already Rejected'], 400);
+        }
+
+        $leaveReq->update([
+            'exec_sec' => 'Rejected',
+        ]);
+        
+        $user = DB::table('users')->where('id', $leaveReq->userid)->first();
+        if ($user) {
+            DB::table('notifications')->insert([
+                'userid' => $leaveReq->userid, // Notify the user who requested leave
+                'message' => "Executive Secretary has rejected your leave request.",
+                'type' => 'Leave Rejected',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+        return response()->json(['message' => 'Leave request Rejected successfully'], 200);
+    }
+
+    // pres 
+
+    public function approveLeaveRequestpres($id)
+    {
+        $leaveReq = LeaveReq::find($id);
+
+        if (!$leaveReq) {
+            return response()->json(['message' => 'Leave request not found'], 404);
+        }
+
+        // Check if the president is already approved
+        if ($leaveReq->president === 'Approved') {
+            return response()->json(['message' => 'Leave request is already approved'], 400);
+        }
+
+        // Update the leave request president to Approved
+        $leaveReq->update([
+            'president' => 'Approved',
+        ]);
+
+        // Fetch the user's name who requested the leave
+        $user = DB::table('users')->where('id', $leaveReq->userid)->first();
+
+        // Send a notification to the user
+        if ($user) {
+            DB::table('notifications')->insert([
+                'userid' => $leaveReq->userid, // Notify the user who requested leave
+                'message' => "President has approved your leave request.",
+                'type' => 'Leave Approval',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json(['message' => 'Leave request approved successfully'], 200);
+    }
+    public function rejectLeaveRequestpres($id)
+    {
+        $leaveReq = LeaveReq::find($id);
+
+        if (!$leaveReq) {
+            return response()->json(['message' => 'Leave request not found'], 404);
+        }
+
+        // Check if the president is already Rejected
+        if ($leaveReq->president === 'Rejected') {
+            return response()->json(['message' => 'Leave request is already Rejected'], 400);
+        }
+
+        $leaveReq->update([
+            'president' => 'Rejected',
+        ]);
+        
+        $user = DB::table('users')->where('id', $leaveReq->userid)->first();
+        if ($user) {
+            DB::table('notifications')->insert([
+                'userid' => $leaveReq->userid, // Notify the user who requested leave
+                'message' => "President has rejected your leave request.",
+                'type' => 'Leave Rejected',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
         return response()->json(['message' => 'Leave request Rejected successfully'], 200);
     }
     

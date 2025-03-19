@@ -58,11 +58,23 @@ Route::apiResource('employmenteducs', EmploymenteducController::class);
 
 
 Route::apiResource('leaverequests', LeaveReqController::class);
+Route::get('/leave-requests/dhead/{id}', [LeaveReqController::class, 'getByDHead']);
+Route::get('/executivesec', [LeaveReqController::class, 'getexecutivesec']);
+Route::get('/president', [LeaveReqController::class, 'getbypresident']);
+Route::get('/departmentheads', [LeaveReqController::class, 'getDepartmentHeads']);
 Route::get('/leaverequests/user/{userid}', [LeaveReqController::class, 'showByUserId']);
 Route::delete('/leaverequests/{id}', [LeaveReqController::class, 'destroy']);
 Route::put('/leave-requests/userupdate/{id}', [LeaveReqController::class, 'updateDetails']);
+// dhead 
 Route::put('/leave-reqs/{id}/approve', [LeaveReqController::class, 'approveLeaveRequest']);
 Route::put('/leave-reqs/{id}/reject', [LeaveReqController::class, 'rejectLeaveRequest']);
+// execsec
+Route::put('/leave-execsec/{id}/approve', [LeaveReqController::class, 'approveLeaveRequestexecsec']);
+Route::put('/leave-execsec/{id}/reject', [LeaveReqController::class, 'rejectLeaveRequestexecsec']);
+// pres 
+Route::put('/leave-pres/{id}/approve', [LeaveReqController::class, 'approveLeaveRequestpres']);
+Route::put('/leave-pres/{id}/reject', [LeaveReqController::class, 'rejectLeaveRequestpres']);
+
 Route::get('/leave-count/{userid}', [LeaveReqController::class, 'countLeaveAndEvents']);
 
 Route::apiResource('leave-types', LeaveTypeController::class);

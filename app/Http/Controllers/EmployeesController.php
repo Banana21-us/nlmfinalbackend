@@ -343,6 +343,13 @@ class EmployeesController extends Controller
             'gender' => 'required|in:Male,Female',
             'status' => 'nullable|string|in:Single,Married',
             'address' => 'required|string|max:255',
+
+            'department' => 'required|string|max:255',
+            'position' => 'required|string|max:255',
+            'designation' => 'required|string|max:255',
+            'work_status' => 'required|string|max:255',
+            'category' => 'required|string|max:255',
+
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             
@@ -360,8 +367,15 @@ class EmployeesController extends Controller
                 'address' => $request->address,
                 'status' => $request->status,
                 'email' => $request->email,
+
+                'department' => $request->department,
+                'position' => $request->position,
+                'designation' => $request->designation,
+                'work_status' => $request->work_status,
+                'category' => $request->category,
+
                 'password' => Hash::make($request->password),
-                'reg_approval' => null,
+                'reg_approval' => now()->toDateString()
             ]);
 
             Log::info('User created successfully.', ['user_id' => $user->id]);
@@ -503,6 +517,8 @@ public function acceptemployee(Request $request, $id){
             'department' => 'sometimes|string|max:255',
             'position' => 'sometimes|string|max:255|nullable',
             'designation' => 'sometimes|string|max:255|nullable',
+            'work_status' => 'sometimes|string|max:255|nullable',
+            'category' => 'sometimes|string|max:255|nullable',
             'email' => 'sometimes|email|unique:users,email,' . $id,
             'password' => 'sometimes|string|min:6|nullable',
         ]);
@@ -518,6 +534,12 @@ public function acceptemployee(Request $request, $id){
         }
         if ($request->has('designation')) {
             $employee->designation = $request->designation;
+        }
+        if ($request->has('work_status')) {
+            $employee->work_status = $request->work_status;
+        }
+        if ($request->has('category')) {
+            $employee->category = $request->category;
         }
         if ($request->has('email')) {
             $employee->email = $request->email;

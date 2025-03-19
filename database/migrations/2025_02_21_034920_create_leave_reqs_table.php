@@ -15,10 +15,13 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('userid');
             $table->unsignedBigInteger('leavetypeid');
-            $table->date('from')->nullable();
-            $table->date('to')->nullable();
-            $table->string('reason')->nullable();
-            $table->enum('status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+            $table->date('from');
+            $table->date('to');
+            $table->string('reason');
+            $table->string('DHead')->nullable();
+            $table->enum('dept_head', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+            $table->enum('exec_sec', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+            $table->enum('president', ['Pending', 'Approved', 'Rejected'])->default('Pending');
             $table->timestamps();
         });
     }

@@ -8,8 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class LeaveReq extends Model
 {
     use HasFactory;
-    protected $fillable = ['userid', 'leavetypeid', 'from', 'to', 'reason', 'status'];
+    protected $fillable = ['userid', 'leavetypeid', 'from', 'to', 'reason','DHead','dept_head','exec_sec','president'];
 
+    public function departmentHead()
+    {
+        return $this->belongsTo(User::class, 'DHead');
+    }
     // Relationship with User
     public function user()
     {

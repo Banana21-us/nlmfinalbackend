@@ -20,7 +20,7 @@ class User extends Authenticatable
     
     protected $fillable = [
         'name', 'birthdate', 'birthplace', 'phone_number', 'gender','status',
-        'address', 'department', 'position', 'designation', 'email', 'password','img','reg_approval'
+        'address', 'department', 'position', 'designation','work_status','category', 'email', 'password','img','reg_approval'
     ];
     protected $dates = ['reg_approval'];
     
