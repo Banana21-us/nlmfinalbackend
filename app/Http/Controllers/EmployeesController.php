@@ -344,12 +344,12 @@ class EmployeesController extends Controller
             'status' => 'nullable|string|in:Single,Married',
             'address' => 'required|string|max:255',
 
-            'department' => 'required|string|max:255',
-            'position' => 'required|string|max:255',
-            'designation' => 'required|string|max:255',
-            'work_status' => 'required|string|max:255',
-            'category' => 'required|string|max:255',
-
+            'department' => 'nullable|string|max:255',
+            'position' => 'nullable|string|max:255',
+            'designation' => 'nullable|string|max:255',
+            'work_status' => 'nullable|string|max:255',
+            'category' => 'nullable|string|max:255',
+            'reg_approval' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             
@@ -375,7 +375,6 @@ class EmployeesController extends Controller
                 'category' => $request->category,
 
                 'password' => Hash::make($request->password),
-                'reg_approval' => now()->toDateString()
             ]);
 
             Log::info('User created successfully.', ['user_id' => $user->id]);
@@ -396,40 +395,59 @@ class EmployeesController extends Controller
 
     public function notifyExecutiveSecretary()
     {
-        // Find the Executive Secretary
-        $executiveSecretary = User::where('position', 'Executive Secretary')->first();
+        // Find the Executive Secretary (positions may contain multiple roles separated by commas)
+        $executiveSecretary = User::where('position', 'LIKE', '%Human Resource%')->first();
 
+    
         if (!$executiveSecretary) {
+            Log::warning('Executive Secretary not found.');
             return response()->json(['message' => 'Executive Secretary not found'], 404);
-        }
-
+        }   
+    
         // Find all users with pending registration approval
-        $pendingUsers = User::whereNull('reg_approval')->get();
-
+        $pendingUsers = User::whereNull('reg_approval')->pluck('name');
+    
         if ($pendingUsers->isEmpty()) {
+            Log::info('No pending user registrations.');
             return response()->json(['message' => 'No pending user registrations'], 200);
         }
-
-        foreach ($pendingUsers as $user) {
-            // Check if a notification already exists for this user
-            $exists = Notification::where('userid', $executiveSecretary->id)
-                ->where('message', "New user request pending approval: \n{$user->name}")
-                ->exists();
-
-            if (!$exists) {
-                // Create a notification
-                Notification::create([
-                    'userid'  => $executiveSecretary->id,
-                    'type'  => "User Request",
-                    'message'  => "New user request pending approval: \n{$user->name}",
-                    'is_read'  => false,
-                    'created_at' => now(),
-                ]);
+    
+        // Fetch existing notifications for the executive secretary
+        $existingNotifications = Notification::where('userid', $executiveSecretary->id)
+            ->whereIn('message', $pendingUsers->map(fn ($name) => "New user request pending approval: \n{$name}"))
+            ->pluck('message')
+            ->toArray();
+    
+        // Prepare new notifications
+        $notifications = [];
+        foreach ($pendingUsers as $name) {
+            $message = "New user request pending approval: \n{$name}";
+    
+            // Only add if it does not already exist
+            if (!in_array($message, $existingNotifications)) {
+                $notifications[] = [
+                    'userid'      => $executiveSecretary->id,
+                    'type'        => "User Request",
+                    'message'     => $message,
+                    'is_read'     => false,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ];
             }
         }
-
+    
+        // ✅ **Insert notifications if there are new ones**
+        if (!empty($notifications)) {
+            Notification::insert($notifications);
+            Log::info('New notifications saved.', ['notifications' => $notifications]);
+        } else {
+            Log::info('No new notifications to save.');
+        }
+    
         return response()->json(['message' => 'Notification sent successfully']);
     }
+    
+
 
     /**
      * Display the specified resource.

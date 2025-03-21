@@ -166,57 +166,62 @@ class LeaveReqController extends Controller
     ]);
 
     // Send Notifications
-    // if ($dept_head_status === 'Pending') {
-    //     $departmentHead = DB::table('users')
-    //         ->where('department', $user->department)
-    //         ->where('position', 'Department Head')
-    //         ->first();
+    $notifications = [];
+    
+    // Notify Department Head if status is "Pending"
+    if ($leaveReq->dept_head === 'Pending') { 
+        // Use the DHead column from leave_reqs as the userid for notifications
+        $departmentHead = User::where('id', $leaveReq->DHead)->first();
+    
+        if ($departmentHead) {
+            $notifications[] = [
+                'userid' => $departmentHead->id, // Assign the DHead user ID
+                'message' => "{$user->name} has submitted a leave request, pending your approval.",
+                'type' => 'Leave Request',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+    }
+    // Notify Executive Secretary if Dept Head approved but Exec Sec is still pending
+    if ($leaveReq->DHead === NULL && $leaveReq->dept_head === 'Approved' && $leaveReq->exec_sec === 'Pending' && $leaveReq->president === 'Pending') {
+        $executiveSecretary = User::where('department', 'Administrators')
+            ->where('position', 'Executive Secretary')
+            ->first();
+    
+        if ($executiveSecretary) {
+            $notifications[] = [
+                'userid' => $executiveSecretary->id,
+                'message' => "{$user->name} has submitted a leave request, pending your approval.",
+                'type' => 'Leave Request',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+    }
 
-    //     if ($departmentHead) {
-    //         DB::table('notifications')->insert([
-    //             'userid' => $departmentHead->id,
-    //             'message' => "{$user->name} has submitted a leave request, pending your approval.",
-    //             'type' => 'Leave Request',
-    //             'is_read' => 0,
-    //             'created_at' => now(),
-    //             'updated_at' => now(),
-    //         ]);
-    //     }
-    // }
+    // Notify President if both Dept Head & Exec Sec approved but President is still pending
+    if ($leaveReq->dept_head === 'Approved' && $leaveReq->exec_sec === 'Approved' && $leaveReq->president === 'Pending') {
+        $president = User::where('position', 'President')->first();
 
-    // if ($exec_sec_status === 'Pending') {
-    //     $executiveSecretary = DB::table('users')
-    //         ->where('position', 'Executive Secretary')
-    //         ->first();
+        if ($president) {
+            $notifications[] = [
+                'userid' => $president->id,
+                'message' => "{$user->name} (Executive Secretary) has submitted a leave request, pending your approval.",
+                'type' => 'Leave Request',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+    }
 
-    //     if ($executiveSecretary) {
-    //         DB::table('notifications')->insert([
-    //             'userid' => $executiveSecretary->id,
-    //             'message' => "{$user->name} (Dept Head) has submitted a leave request, pending your approval.",
-    //             'type' => 'Leave Request',
-    //             'is_read' => 0,
-    //             'created_at' => now(),
-    //             'updated_at' => now(),
-    //         ]);
-    //     }
-    // }
-
-    // if ($president_status === 'Pending') {
-    //     $president = DB::table('users')
-    //         ->where('position', 'President')
-    //         ->first();
-
-    //     if ($president) {
-    //         DB::table('notifications')->insert([
-    //             'userid' => $president->id,
-    //             'message' => "{$user->name} (Executive Secretary) has submitted a leave request, pending your approval.",
-    //             'type' => 'Leave Request',
-    //             'is_read' => 0,
-    //             'created_at' => now(),
-    //             'updated_at' => now(),
-    //         ]);
-    //     }
-    // }
+    // Insert all notifications at once
+    if (!empty($notifications)) {
+        DB::table('notifications')->insert($notifications);
+    }
 
     return response()->json($leaveReq, 201);
 }
@@ -312,6 +317,7 @@ class LeaveReqController extends Controller
 
         return response()->json($leaveReq);
     }
+
     // Update leave request without requiring status
     public function updateDetails(Request $request, $id)
     {
@@ -374,8 +380,27 @@ class LeaveReqController extends Controller
             ]);
         }
 
+        // notify exec sec 
+        $executiveSecretaries = DB::table('users')
+        ->where('department', 'Administrators')
+        ->whereRaw("position LIKE ?", ['%Executive Secretary%'])
+        ->get();
+
+        foreach ($executiveSecretaries as $secretary) {
+            DB::table('notifications')->insert([
+                'userid' => $secretary->id,
+                'message' => "{$user->name}'s Department Head has approved a leave request, pending your approval.",
+                'type' => 'Leave Request',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+
         return response()->json(['message' => 'Leave request approved successfully'], 200);
     }
+
 
 
     
@@ -439,6 +464,22 @@ class LeaveReqController extends Controller
                 'userid' => $leaveReq->userid, // Notify the user who requested leave
                 'message' => "Executive Secretary has approved your leave request.",
                 'type' => 'Leave Approval',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $executiveSecretaries = DB::table('users')
+        ->where('department', 'Administrators')
+        ->whereRaw("position LIKE ?", ['%President%'])
+        ->get();
+
+        foreach ($executiveSecretaries as $secretary) {
+            DB::table('notifications')->insert([
+                'userid' => $secretary->id,
+                'message' => "{$user->name} | Department Head & Executive Secretary has approved a leave request, pending your approval.",
+                'type' => 'Leave Request',
                 'is_read' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),

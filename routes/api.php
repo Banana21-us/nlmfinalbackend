@@ -100,11 +100,14 @@ Route::get('/notify-exec-secretary', [NotificationController::class, 'notifyExec
 Route::post('/notifications', [NotificationController::class, 'store']);
 Route::get('/notifications', [NotificationController::class, 'index']);
 Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+
 Route::get('/notifications/unread-count/{userId}', [NotificationController::class, 'getUnreadNotificationCount']);
 
-Route::apiResource('events', EventsController::class);
+Route::apiResource('events', EventsController::class);  
 // Route::get('/events/{id}', [EmployeEventsControlleresController::class, 'show']);
 Route::get('/events/user/{userId}', [EventsController::class, 'getEventsByUserId']);
+Route::post('/nlmevents', [EventsController::class, 'storeForAllUsers']);
 
 Route::post('/upload', function (Request $request) {
     if ($request->hasFile('file')) {

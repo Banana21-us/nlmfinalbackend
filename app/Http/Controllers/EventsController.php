@@ -6,12 +6,48 @@ use App\Models\events;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-
+use Illuminate\Support\Facades\DB;
 class EventsController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
+    public function storeForAllUsers(Request $request)
+    {
+        Log::info('StoreForAllUsers method called', ['request' => $request->all()]);
+
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'time' => 'required|date_format:Y-m-d\TH:i', // Adjusted format
+        ]);
+
+        // Convert time if necessary
+        $time = Carbon::createFromFormat('Y-m-d\TH:i', $request->time)->format('Y-m-d H:i:s');
+
+        Log::info('Validation passed');
+
+        // Retrieve all user IDs
+        $userIds = DB::table('users')->pluck('id');
+
+        $events = [];
+        foreach ($userIds as $userId) {
+            $events[] = [
+                'title' => $request->title,
+                'time' => $time,
+                'userid' => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        // Insert all events in a single query
+        DB::table('events')->insert($events);
+
+        Log::info('Events created for all users', ['count' => count($events)]);
+        return response()->json(['message' => 'Events created for all users', 'count' => count($events)], 201);
+    }
+
+
     public function index()
     {
         $events = Events::all();
@@ -23,29 +59,29 @@ class EventsController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-{
-    Log::info('Store method called', ['request' => $request->all()]);
+    {
+        Log::info('Store method called', ['request' => $request->all()]);
 
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'time' => 'required|date_format:Y-m-d\TH:i', // Adjusted format
-        'userid' => 'required|exists:users,id',
-    ]);
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'time' => 'required|date_format:Y-m-d\TH:i', // Adjusted format
+            'userid' => 'required|exists:users,id',
+        ]);
 
-    // Convert time if necessary
-    $time = Carbon::createFromFormat('Y-m-d\TH:i', $request->time)->format('Y-m-d H:i:s');
+        // Convert time if necessary
+        $time = Carbon::createFromFormat('Y-m-d\TH:i', $request->time)->format('Y-m-d H:i:s');
 
-    Log::info('Validation passed');
+        Log::info('Validation passed');
 
-    $event = events::create([
-        'title' => $request->title,
-        'time' => $time,
-        'userid' => $request->userid,
-    ]);
+        $event = events::create([
+            'title' => $request->title,
+            'time' => $time,
+            'userid' => $request->userid,
+        ]);
 
-    Log::info('Event created', ['event' => $event]);
-    return response()->json($event, 201);
-}
+        Log::info('Event created', ['event' => $event]);
+        return response()->json($event, 201);
+    }
 
     /**
      * Display the specified resource.

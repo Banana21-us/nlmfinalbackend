@@ -14,6 +14,21 @@ class NotificationController extends Controller
      * Display a listing of the resource.
      */
 
+    /**
+     * Update the specified resource in storage.
+     */
+    public function markAsRead($id)
+    {
+        $notification = Notification::find($id);
+
+        if (!$notification) {
+            return response()->json(['message' => 'Notification not found'], 404);
+        }
+
+        $notification->update(['is_read' => true]);
+
+        return response()->json(['message' => 'Notification marked as read']);
+    }
 
      public function getnotif($userId)
 {
@@ -65,15 +80,8 @@ class NotificationController extends Controller
         return response()->json($notification);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, notification $id)
-    {
-        $id->update(['is_read' => true]);
-        
-        return response()->json(['message' => 'Notification marked as read']);
-    }
+    
+
     public function getUnreadNotificationCount($userId) {
         $count = notification::where('userid', $userId)
                              ->where('is_read', false)
