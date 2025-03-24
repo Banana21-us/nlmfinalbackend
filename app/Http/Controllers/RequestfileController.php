@@ -15,61 +15,79 @@ class RequestfileController extends Controller
     /**
      * Display a listing of the resource.
      */
+    public function storeOrUpdateAccCode(Request $request, $userId)
+    {
+        // Validate the input
+        $request->validate([
+            'acc_code' => 'required|string|max:255|unique:users,acc_code,' . $userId,
+        ]);
 
-     public function uploadFiles(Request $request)
-     {
-         // Validate request
-         $request->validate([
-             'files.*' => 'required|file|max:2048' // Validate files, no need to validate 'description'
-         ]);
-     
-         $uploadedFiles = $request->file('files');
-         $savedFiles = [];
-     
-         foreach ($uploadedFiles as $file) {
-             $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME); // Extract filename without extension
-     
-             // Check if filename matches a user ID
-             $user = User::find($filename);
-     
-             if ($user) {
-                 // Ensure the directory exists
-                 $destinationPath = public_path("storage/uploads/user_{$user->id}");
-                 if (!file_exists($destinationPath)) {
-                     mkdir($destinationPath, 0777, true); // Create directory if not exists
-                 }
-     
-                 // Generate a unique file name to prevent overwriting
-                 $uniqueFileName = now()->format('m-d-Y') . '_' . $file->getClientOriginalName();
-                 $filePath = "storage/uploads/user_{$user->id}/" . $uniqueFileName;
-                    
-                 // Move file to public storage directory
-                 $file->move($destinationPath, $uniqueFileName);
-     
-                 // Generate a public URL for the file
-                 $fileUrl = asset($filePath);
-     
-                 // Save to database with a clickable link
-                 RequestFile::create([
-                     'userid' => $user->id,
-                     'description' => 'Statement of Account',
-                     'file' => "<p><a href='$fileUrl'>$uniqueFileName</a></p>",
-                     'time' => Carbon::now()
-                 ]);
-     
-                 $savedFiles[] = [
-                     'user_id' => $user->id,
-                     'file_name' => $uniqueFileName,
-                     'file_url' => $fileUrl,
-                 ];
-             }
-         }
-     
-         return response()->json([
-             'message' => 'Files uploaded successfully!',
-             'uploaded_files' => $savedFiles
-         ]);
-     }
+        // Find the user
+        $user = User::findOrFail($userId);
+
+        // Store or update the acc_code
+        if (is_null($user->acc_code)) {
+            $message = 'Account code stored successfully.';
+        } else {
+            $message = 'Account code updated successfully.';
+        }
+
+        $user->acc_code = $request->acc_code;
+        $user->save();
+
+        return response()->json(['message' => $message, 'acc_code' => $user->acc_code]);
+    }
+
+
+    public function uploadFiles(Request $request)
+    {
+        // Validate request
+        $request->validate([
+            'files.*' => 'required|file|max:2048' 
+        ]);
+    
+        $uploadedFiles = $request->file('files');
+        $savedFiles = [];
+    
+        foreach ($uploadedFiles as $file) {
+            $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME); 
+    
+            // Find user by acc_code instead of id
+            $user = User::where('acc_code', $filename)->first(); 
+    
+            if ($user) {
+                $destinationPath = public_path("storage/uploads/user_{$user->acc_code}");
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true); 
+                }
+                $uniqueFileName = now()->format('m-d-Y') . '_' . $file->getClientOriginalName();
+                $filePath = "storage/uploads/user_{$user->acc_code}/" . $uniqueFileName;
+                   
+                $file->move($destinationPath, $uniqueFileName);
+    
+                $fileUrl = asset($filePath);
+    
+                RequestFile::create([
+                    'userid' => $user->id, 
+                    'description' => 'Statement of Account',
+                    'file' => "<p><a href='$fileUrl'>$uniqueFileName</a></p>",
+                    'time' => Carbon::now()
+                ]);
+    
+                $savedFiles[] = [
+                    'acc_code' => $user->acc_code, 
+                    'file_name' => $uniqueFileName,
+                    'file_url' => $fileUrl,
+                ];
+            }
+        }
+    
+        return response()->json([
+            'message' => 'Files uploaded successfully!',
+            'uploaded_files' => $savedFiles
+        ]);
+    }
+    
      
 
 
@@ -98,21 +116,23 @@ class RequestfileController extends Controller
     public function bysoa() 
     {
         $users = User::leftJoin('requestfiles', 'users.id', '=', 'requestfiles.userid')
-            ->select('users.id as userid', 'users.name', 'requestfiles.id', 'requestfiles.description', 'requestfiles.file', 'requestfiles.time')
+            ->select('users.id as userid', 'users.name', 'users.acc_code', 'requestfiles.id', 'requestfiles.description', 'requestfiles.file', 'requestfiles.time')
             ->get()
             ->groupBy('name')
             ->map(function ($files, $name) {
                 $userid = $files->first()->userid ?? null; // Get user ID even if no files exist
-                
+                $acc_code = $files->first()->acc_code ?? null; 
+
                 $matchingFiles = $files->whereNotNull('id')
                     ->where('description', '=', 'Statement of Account')
                     ->map(function ($file) {
-                        return collect($file)->except(['name', 'userid']);
+                        return collect($file)->except(['name', 'userid','acc_code']);
                     })->values();
                 
                 if ($matchingFiles->isEmpty()) {
                     return [
                         'userid' => $userid,
+                        'acc_code' => $acc_code,
                         'name' => $name,
                         'message' => 'No request files found for this user',
                         'files' => []
@@ -120,6 +140,7 @@ class RequestfileController extends Controller
                 } else {
                     return [
                         'userid' => $userid,
+                        'acc_code' => $acc_code,
                         'name' => $name,
                         'files' => $matchingFiles
                     ];

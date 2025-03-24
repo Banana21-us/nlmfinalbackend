@@ -26,6 +26,7 @@ return new class extends Migration
             $table->string('work_status')->nullable();
             $table->string('category')->nullable();  
             $table->string('img')->nullable();
+            $table->string('acc_code')->nullable();
             $table->date('reg_approval')->nullable();
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();

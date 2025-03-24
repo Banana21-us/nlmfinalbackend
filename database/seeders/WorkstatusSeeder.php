@@ -8,10 +8,14 @@ use Carbon\Carbon;
 
 class WorkstatusSeeder extends Seeder
 {
-    /**
-     * php artisan db:seed --class=WorkstatusSeeder
+   
+    //   php artisan db:seed --class=WorkstatusSeeder
+    //   php artisan db:seed --class=PositionSeeder
+    //   php artisan db:seed --class=DesignationSeeder
+    //   php artisan db:seed --class=DepartmentSeeder
+    //   php artisan db:seed --class=CategorySeeder
 
-     */
+     
     public function run(): void
     {
         $workStatuses = [

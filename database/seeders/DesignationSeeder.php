@@ -10,6 +10,7 @@ class DesignationSeeder extends Seeder
 {
     /**
      * php artisan db:seed --class=DesignationSeeder
+     * 
      */
     public function run(): void
     {

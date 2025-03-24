@@ -87,6 +87,7 @@ Route::apiResource('designation', DesignationController::class);
 Route::apiResource('position', PositionController::class);
 Route::apiResource('announcements', AnnouncementController::class);
 
+Route::post('/store-or-update-acc-code/{id}', [RequestfileController::class, 'storeOrUpdateAccCode']);
 Route::apiResource('requestfile', RequestfileController::class);
 Route::get('/filerecords', [RequestfileController::class, 'bynotsoa']);
 Route::get('/soarecords', [RequestfileController::class, 'bysoa']);
