@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\notification;
 use App\Models\User;
+use App\Models\events;
 use Illuminate\Http\Request;    
 use App\Http\Requests\StorenotificationRequest;
 use App\Http\Requests\UpdatenotificationRequest;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 class NotificationController extends Controller
 {
     /**
@@ -30,31 +32,50 @@ class NotificationController extends Controller
         return response()->json(['message' => 'Notification marked as read']);
     }
 
-     public function getnotif($userId)
-{
-    if (!$userId) {
-        return response()->json(['message' => 'User ID is required'], 400);
+    public function getnotif($userId)
+    {
+        if (!$userId) {
+            return response()->json(['message' => 'User ID is required'], 400);
+        }
+    
+        \Log::info('Fetching notifications for user ID:', ['userId' => $userId]);
+    
+        // Fetch notifications for the user
+        $notifications = notification::where('userid', $userId)
+            ->whereIn('type', ['User Request', 'Announcements', 'Statement of Account', 'Service Records', 'Leave Request', 'Leave Approval'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+    
+        // Fetch today's events for the user
+        $today = now()->toDateString(); // Get current date in 'YYYY-MM-DD' format
+        $events = events::where('userid', $userId)
+            ->whereDate('time', $today)
+            ->get()
+            ->map(function ($event) {
+                return [
+                    'id' => $event->id,
+                    'userid' => $event->userid,
+                    'message' => "Upcoming Event: " . $event->title . " at " . Carbon::parse($event->time)->format('F j, Y h:i A'),
+                    'type' => 'Event',
+                    'is_read' => 0,
+                    'created_at' => $event->created_at,
+                ];
+            });
+    
+        \Log::info('Sorted notifications:', ['notifications' => $notifications]);
+        \Log::info('Fetched today\'s events:', ['events' => $events]);
+    
+        return response()->json([
+            'user_requests' => $notifications->where('type', 'User Request')->values(),
+            'announcements' => $notifications->where('type', 'Announcements')->values(),
+            'statementofaccount' => $notifications->where('type', 'Statement of Account')->values(),
+            'servicerecords' => $notifications->where('type', 'Service Records')->values(),
+            'leavereq' => $notifications->where('type', 'Leave Request')->values(),
+            'leaveapproval' => $notifications->where('type', 'Leave Approval')->values(),
+            'events' => $events->values(),
+        ]);
     }
-
-    \Log::info('Fetching notifications for user ID:', ['userId' => $userId]);
-
-    $notifications = notification::where('userid', $userId)
-        ->whereIn('type', ['User Request', 'Announcements','Statement of Account','Service Records','Leave Request','Leave Approval'])
-        ->orderBy('created_at', 'desc')
-        ->get();
-    \Log::info('Sorted notifications:', ['notifications' => $notifications]);
-    \Log::info('Notifications fetched:', ['notifications' => $notifications]);
-
-    return response()->json([
-        'user_requests' => $notifications->where('type', 'User Request')->values(),
-        'announcements' => $notifications->where('type', 'Announcements')->values(),
-        'statementofaccouunt' => $notifications->where('type', 'Statement of Account')->values(),
-        'servicerecords' => $notifications->where('type', 'Service Records')->values(),
-        'leavereq' => $notifications->where('type', 'Leave Request')->values(),
-        'leaveapproval'=> $notifications->where('type', 'Leave Approval')->values(),
-
-    ]);
-}
+    
 
      
     /**

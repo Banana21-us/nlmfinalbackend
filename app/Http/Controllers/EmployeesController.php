@@ -20,6 +20,9 @@ use App\Models\Employmentdet;
 use App\Models\empfamily;
 use App\Models\spouse;
 use App\Models\notification;
+use App\Models\LeaveReq;
+use Carbon\Carbon;
+use App\Models\events;
 class EmployeesController extends Controller
 {
     public function login(Request $request) {
@@ -109,15 +112,67 @@ class EmployeesController extends Controller
         }
 
     }
-    public function count(){
-        $userCount = User::count(); // Get total user count
-        $announcementCount = Announcement::count(); // Get total announcement count
-    
+    public function count() {
+        $pendingUsers = User::whereNull('reg_approval')->count(); 
+        $approvedUsers = User::whereNotNull('reg_approval')->count(); 
+        $announcementCount = Announcement::count(); 
+
         return response()->json([
-            'total_users' => $userCount,
+            'pending_users' => $pendingUsers,
+            'approved_users' => $approvedUsers,
             'total_announcements' => $announcementCount,
         ]);
     }
+    public function countdashadmin() {
+        $pendingExecSecCount = LeaveReq::where('dept_head', 'Approved')
+                                       ->where('exec_sec', 'Pending')
+                                       ->count();
+        return response()->json([
+            'pending_exec_sec' => $pendingExecSecCount
+        ]);
+    }
+    public function countleavepresident() {
+        $pendingPres = LeaveReq::where('dept_head', 'Approved')
+                                       ->where('exec_sec', 'Approved')
+                                       ->where('president', 'Pending')
+                                       ->count();
+        return response()->json([
+            'pending_pres' => $pendingPres
+        ]);
+    }     
+    public function countleavedepthead($id)
+    {
+        $pendingdhead = LeaveReq::where('dept_head', 'Pending')
+                                ->where('exec_sec', 'Pending')
+                                ->where('president', 'Pending')
+                                ->count();
+
+        return response()->json([
+            'pending_dhead' => $pendingdhead
+        ]);
+    }
+    public function countTodayEventsAndApprovedLeaves($userId) {
+        $today = Carbon::today()->toDateString();
+    
+        // Count events for today
+        $eventCount = Events::where('userid', $userId)
+                            ->whereDate('time', $today)
+                            ->count();
+    
+        // Sum total approved leave days for the specific user
+        $totalLeaveDays = LeaveReq::where('userid', $userId)
+                                  ->where('president', 'Approved')
+                                  ->get()
+                                  ->sum(function ($leave) {
+                                      return Carbon::parse($leave->from)->diffInDays(Carbon::parse($leave->to)) + 1;
+                                  });
+    
+        return response()->json([
+            'today_events' => $eventCount,
+            'total_leave_days' => $totalLeaveDays,
+        ]);
+    }
+    
     public function accountsaveedit(Request $request){
         Log::info('Starting accountsaveedit method');
     
@@ -319,10 +374,6 @@ class EmployeesController extends Controller
         $employees = User::orderBy('created_at', 'desc')->get();
         return response()->json($employees);
     }
-    
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request){
         Log::info('Received a request to create a new user.', ['request_data' => $request->all()]);
 
@@ -382,9 +433,7 @@ class EmployeesController extends Controller
             return response()->json(['message' => 'Failed to create user', 'error' => $e->getMessage()], 500);
         }
     }
-
-    public function notifyExecutiveSecretary()
-    {
+    public function notifyExecutiveSecretary(){
         // Find the Human Resource (positions may contain multiple roles separated by commas)
         $executiveSecretary = User::where('position', 'LIKE', '%Human Resource%')->first();
 
@@ -436,79 +485,67 @@ class EmployeesController extends Controller
     
         return response()->json(['message' => 'Notification sent successfully']);
     }
-    
+    public function show($id){
+        $employee = User::find($id);
 
+        if (!$employee) {
+            return response()->json(['error' => 'Employee not found'], 404);
+        }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show($id)
-{
-    $employee = User::find($id);
+        // Fetch related education and employment details
+        $education = Employmenteduc::where('userid', $id)->get();
+        $employment = Employmentdet::where('userid', $id)->get();
+        $employfamily = empfamily::where('userid', $id)->get();
+        $spouse = spouse::where('userid', $id)->get();
 
-    if (!$employee) {
-        return response()->json(['error' => 'Employee not found'], 404);
+        return response()->json([
+            'employee' => $employee,
+            'education' => $education,
+            'employment' => $employment,
+            'employfamily' => $employfamily,
+            'spouse' => $spouse,
+        ]);
     }
+    public function acceptemployee(Request $request, $id){
+        Log::info("Received request to accept employee", ['employee_id' => $id, 'request_data' => $request->all()]);
 
-    // Fetch related education and employment details
-    $education = Employmenteduc::where('userid', $id)->get();
-    $employment = Employmentdet::where('userid', $id)->get();
-    $employfamily = empfamily::where('userid', $id)->get();
-    $spouse = spouse::where('userid', $id)->get();
+        // Find the employee by ID
+        $employee = User::find($id);
+        
+        if (!$employee) {
+            Log::warning("Employee not found", ['employee_id' => $id]);
+            return response()->json(['message' => 'Employee not found'], 404);
+        }
 
-    return response()->json([
-        'employee' => $employee,
-        'education' => $education,
-        'employment' => $employment,
-        'employfamily' => $employfamily,
-        'spouse' => $spouse,
-    ]);
-}
+        // Validate request data
+        $validatedData = $request->validate([
+            'department' => 'required|string|max:255',
+            'position' => 'required|string|max:255',
+            'designation' => 'required|string|max:255',
+            'work_status' => 'required|string|max:255',
+            'category' => 'required|string|max:255',
+        ]);
 
-public function acceptemployee(Request $request, $id){
-    Log::info("Received request to accept employee", ['employee_id' => $id, 'request_data' => $request->all()]);
+        Log::info("Validation passed", ['validated_data' => $validatedData]);
 
-    // Find the employee by ID
-    $employee = User::find($id);
-    
-    if (!$employee) {
-        Log::warning("Employee not found", ['employee_id' => $id]);
-        return response()->json(['message' => 'Employee not found'], 404);
+        // Update fields if provided
+        $employee->department = $request->department;
+        $employee->position = $request->position;
+        $employee->designation = $request->designation;
+        $employee->work_status = $request->work_status;
+        $employee->category = $request->category;
+        $employee->reg_approval = now()->toDateString(); 
+
+        $employee->save();
+
+        Log::info("Employee updated successfully", ['employee_id' => $id]);
+
+        return response()->json([
+            'message' => 'Employee updated successfully',
+            'employee' => $employee
+        ]);
     }
-
-    // Validate request data
-    $validatedData = $request->validate([
-        'department' => 'required|string|max:255',
-        'position' => 'required|string|max:255',
-        'designation' => 'required|string|max:255',
-        'work_status' => 'required|string|max:255',
-        'category' => 'required|string|max:255',
-    ]);
-
-    Log::info("Validation passed", ['validated_data' => $validatedData]);
-
-    // Update fields if provided
-    $employee->department = $request->department;
-    $employee->position = $request->position;
-    $employee->designation = $request->designation;
-    $employee->work_status = $request->work_status;
-    $employee->category = $request->category;
-    $employee->reg_approval = now()->toDateString(); 
-
-    $employee->save();
-
-    Log::info("Employee updated successfully", ['employee_id' => $id]);
-
-    return response()->json([
-        'message' => 'Employee updated successfully',
-        'employee' => $employee
-    ]);
-}
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id)
-    {
+    public function update(Request $request, $id){
         Log::info('Received request to update employee', ['employee_id' => $id, 'request_data' => $request->all()]);
 
         // Find the employee by ID
@@ -570,14 +607,7 @@ public function acceptemployee(Request $request, $id){
             'employee' => $employee
         ]);
     }
-
-
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id)
-    {
+    public function destroy($id){
         $employee = User::find($id);
 
         if (!$employee) {

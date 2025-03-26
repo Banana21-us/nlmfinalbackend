@@ -21,9 +21,6 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\WorkstatusController;
 
-
-
-
 // Protected Route (Requires Authentication via Sanctum)
 // Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 //     return $request->user();
@@ -32,15 +29,19 @@ use App\Http\Controllers\WorkstatusController;
 //     Route::post('/users', [EmployeesController::class, 'store']);
 // });
 // Route::post('/login',[EmployeesController::class,'login']);
-Route::post('/login', [EmployeesController::class, 'login'])->middleware('throttle:5,1');
 
+
+Route::post('/login', [EmployeesController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/regusers', [EmployeesController::class, 'store']);
 // Route::middleware(['auth:sanctum'])->group(function () {
 
 
 Route::get('/users/count', [EmployeesController::class, 'count']);
+Route::get('/leavecount', [EmployeesController::class, 'countdashadmin']);
+Route::get('/presapplieadleave', [EmployeesController::class, 'countleavepresident']);
+Route::get('/dheadapplieadleave/{id}', [EmployeesController::class, 'countleavedepthead']);
 
-
+Route::get('/dashboard-data/{userId}',  [EmployeesController::class, 'countTodayEventsAndApprovedLeaves']);
 Route::put('/employees/{id}', [EmployeesController::class, 'update']);
 Route::get('/employees', [EmployeesController::class, 'index']);
 Route::delete('/employees/{id}', [EmployeesController::class, 'destroy']);
