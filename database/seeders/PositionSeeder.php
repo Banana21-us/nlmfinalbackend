@@ -24,7 +24,7 @@ class PositionSeeder extends Seeder
             'Maintenance', 'IT', 'Administrative Assistant', 'Auditor', 'Receiving Accountant',
             'Chief Accountant', 'Church Auditor', 'Accounting Staff', 'Disbursing Accountant',
             'Sabbath School Personal Ministries', 'Adventist Community Service',
-            'Stewardship Ministry', 'Adventist Laymen Services Institute', 'APML'
+            'Stewardship Ministry', 'Adventist Laymen Services Institute', 'APML', 'Pastor'
         ];
 
         foreach ($positions as $position) {

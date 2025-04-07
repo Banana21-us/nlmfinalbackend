@@ -72,7 +72,9 @@ class NotificationController extends Controller
             'servicerecords' => $notifications->where('type', 'Service Records')->values(),
             'leavereq' => $notifications->where('type', 'Leave Request')->values(),
             'leaveapproval' => $notifications->where('type', 'Leave Approval')->values(),
+            'leaverejected' => $notifications->where('type', 'Leave Rejected')->values(),
             'events' => $events->values(),
+            
         ]);
     }
     

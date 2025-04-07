@@ -140,8 +140,7 @@ class EmployeesController extends Controller
             'pending_pres' => $pendingPres
         ]);
     }     
-    public function countleavedepthead($id)
-    {
+    public function countleavedepthead($id){
         $pendingdhead = LeaveReq::where('dept_head', 'Pending')
                                 ->where('exec_sec', 'Pending')
                                 ->where('president', 'Pending')
@@ -172,15 +171,15 @@ class EmployeesController extends Controller
             'total_leave_days' => $totalLeaveDays,
         ]);
     }
-    
-    public function accountsaveedit(Request $request){
+    public function accountsaveedit(Request $request)
+    {
         Log::info('Starting accountsaveedit method');
-    
+
         try {
             // Log request data
             Log::info('Raw request data:', [$request->getContent()]);
             Log::info('Parsed request data:', $request->all());
-    
+
             // Validate incoming request data
             $validatedData = $request->validate([
                 'userid' => 'required|exists:users,id',
@@ -205,15 +204,19 @@ class EmployeesController extends Controller
                 'education.*.year' => 'required|date',
                 'education.*.school' => 'required|string',
                 'education.*.degree' => 'nullable|string',
+                // 'password' => 'nullable|string|min:8', 
+                'old_password' => 'nullable|string',
+                'new_password' => 'nullable|string|min:8',
+                'confirm_password' => 'nullable|string|same:new_password'
             ]);
-    
+
             Log::info('Request data validated successfully.');
-    
+
             // Find the user to update
             $user = User::findOrFail($request->userid);
-    
+
             Log::info('User found:', ['user_id' => $user->id, 'user_name' => $user->name]);
-    
+
             // Update user basic info
             $user->update([
                 'name' => $request->name,
@@ -223,14 +226,39 @@ class EmployeesController extends Controller
                 'status' => $request->status,
                 'birthplace' => $request->birthplace,
             ]);
-    
+            
+            // Update password if provided
+            // if ($request->filled('password')) {
+            //     $user->password = bcrypt($request->password);
+            //     $user->save();
+            //     Log::info('Password updated.');
+            // }
+            if ($request->filled('old_password')) {
+                // Check if the old password matches the current one
+                if (!Hash::check($request->old_password, $user->password)) {
+                    Log::warning('Old password does not match.');
+                    return response()->json(['message' => 'Old password is incorrect'], 400);
+                }
+            
+                // Check if new password and confirm password match
+                if ($request->new_password !== $request->confirm_password) {
+                    Log::warning('New password and confirm password do not match.');
+                    return response()->json(['message' => 'Passwords do not match'], 400);
+                }
+            
+                // Update to the new password
+                $user->password = bcrypt($request->new_password);
+                $user->save();
+                Log::info('Password updated successfully.');
+            }
+
             Log::info('User basic info updated successfully.');
-    
+
             // Handle education records
             if ($request->has('education')) {
                 Employmenteduc::where('userid', $request->userid)->delete(); // Remove old education records
                 Log::info('Existing education records removed.');
-    
+
                 foreach ($request->education as $edu) {
                     Employmenteduc::create([
                         'userid' => $request->userid,
@@ -245,22 +273,22 @@ class EmployeesController extends Controller
             } else {
                 Log::info('No education data provided in the request.');
             }
-    
+
             // Handle spouse information
             $spouseData = [
                 'userid' => $request->userid,
                 'name' => $request->spouse,
                 'dateofmarriage' => $request->dateofmarriage,
             ];
-    
+
             Spouse::updateOrCreate(['userid' => $request->userid], $spouseData);
-    
+
             Log::info('Spouse information updated/created successfully.');
-    
+
             // Handle children
             Empfamily::where('userid', $request->userid)->delete(); // Remove old children first
             Log::info('Existing children removed.');
-    
+
             if ($request->has('children')) {
                 foreach ($request->children as $child) {
                     Empfamily::create([
@@ -275,7 +303,7 @@ class EmployeesController extends Controller
             } else {
                 Log::info('No children data provided in the request.');
             }
-    
+
             // Handle employments
             if ($request->has('employments')) {
                 Employmentdet::where('userid', $request->userid)->delete(); // Remove old employments first
@@ -293,16 +321,16 @@ class EmployeesController extends Controller
             } else {
                 Log::info('No employment data provided in the request.');
             }
-    
+
             Log::info('Account data saved successfully.');
-    
+
             return response()->json(['message' => 'Account data saved successfully'], 200);
-    
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Log validation errors
             Log::error('Validation errors:', $e->errors());
             return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
-    
+
         } catch (\Exception $e) {
             // Log any other exceptions that occur
             Log::error('Error saving account data: ' . $e->getMessage(), [
@@ -312,6 +340,7 @@ class EmployeesController extends Controller
             return response()->json(['message' => 'Error saving account data: ' . $e->getMessage()], 500);
         }
     }
+
     public function getAccountDetails($userid){
         Log::info('Fetching account details for user', ['userid' => $userid]);
 

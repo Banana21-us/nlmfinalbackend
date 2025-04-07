@@ -18,6 +18,7 @@ class LeaveReqController extends Controller
     {
         $leaveRequests = LeaveReq::with(['departmentHead', 'user', 'leaveType'])
             ->where('dept_head', 'Approved') // Filter for approved requests
+            ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json($leaveRequests);
@@ -27,6 +28,7 @@ class LeaveReqController extends Controller
     {
         $leaveRequests = LeaveReq::with(['departmentHead', 'user', 'leaveType'])
             ->where('exec_sec', 'Approved') // Filter for approved requests
+            ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json($leaveRequests);
@@ -38,6 +40,7 @@ class LeaveReqController extends Controller
     {
         $leaveRequests = LeaveReq::with(['departmentHead', 'user','leaveType']) // Eager load user and department head
             ->where('DHead', $dheadId)
+            ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json($leaveRequests);
@@ -152,6 +155,8 @@ class LeaveReqController extends Controller
         $president_status = 'Pending';
     }
 
+    Log::info("Creating leave request for user ID: {$request->userid}");
+
     // Create Leave Request
     $leaveReq = LeaveReq::create([
         'userid' => $request->userid,
@@ -164,6 +169,8 @@ class LeaveReqController extends Controller
         'exec_sec' => $exec_sec_status,
         'president' => $president_status
     ]);
+
+    Log::info("Leave request created with ID: {$leaveReq->id}");
 
     // Send Notifications
     $notifications = [];
@@ -182,6 +189,7 @@ class LeaveReqController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+            Log::info("Notification prepared for Department Head ID: {$departmentHead->id}");
         }
     }
     // Notify Executive Secretary if Dept Head approved but Exec Sec is still pending
@@ -199,6 +207,7 @@ class LeaveReqController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+            Log::info("Notification prepared for Executive Secretary ID: {$executiveSecretary->id}");
         }
     }
 
@@ -209,18 +218,40 @@ class LeaveReqController extends Controller
         if ($president) {
             $notifications[] = [
                 'userid' => $president->id,
-                'message' => "{$user->name} (Executive Secretary) has submitted a leave request, pending your approval.",
+                'message' => "{$user->name} has submitted a leave request, pending your approval.",
                 'type' => 'Leave Request',
                 'is_read' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+            Log::info("Notification prepared for President ID: {$president->id}");
+        }
+    } 
+    if ($user->department === 'Directors' && $leaveReq->exec_sec === 'Pending') {
+        $executiveSecretary = User::where('department', 'Administrators')
+        ->where('position', 'like', '%Executive Secretary%')
+        ->first();
+        Log::info('Checking for Directors -> Exec Sec notification');
+
+        if ($executiveSecretary) {
+            DB::table('notifications')->insert([
+                'userid' => $executiveSecretary->id,
+                'message' => "{$user->name} has submitted a leave request.",
+                'type' => 'Leave Request',
+                'is_read' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            Log::info('Executive Secretary notified from Directors department');
+        } else {
+            Log::warning('Executive Secretary not found for Directors');
         }
     }
-
+    
     // Insert all notifications at once
     if (!empty($notifications)) {
         DB::table('notifications')->insert($notifications);
+        Log::info("Notifications inserted into database for leave request ID: {$leaveReq->id}");
     }
 
     return response()->json($leaveReq, 201);
@@ -295,7 +326,10 @@ class LeaveReqController extends Controller
    
     public function showByUserId($userid)
     {
-        $leaveRequests = LeaveReq::with(['user', 'leaveType'])->where('userid', $userid)->get();
+        $leaveRequests = LeaveReq::with(['user', 'leaveType'])
+        ->where('userid', $userid)
+        ->orderBy('created_at', 'desc')
+        ->get();
 
         if ($leaveRequests->isEmpty()) {
             return response()->json(['message' => 'No leave requests found for this user.'], 404);
