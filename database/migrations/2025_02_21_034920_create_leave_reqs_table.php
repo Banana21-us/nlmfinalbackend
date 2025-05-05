@@ -19,7 +19,8 @@ return new class extends Migration
             $table->date('to');
             $table->string('reason');
             $table->string('DHead')->nullable();
-            $table->enum('dept_head', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+            $table->enum('dept_head', ['None', 'Pending', 'Approved', 'Rejected'])
+                  ->default('None'); // Default if not set
             $table->enum('exec_sec', ['Pending', 'Approved', 'Rejected'])->default('Pending');
             $table->enum('president', ['Pending', 'Approved', 'Rejected'])->default('Pending');
             $table->timestamps();

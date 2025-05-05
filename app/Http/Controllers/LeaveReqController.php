@@ -17,7 +17,7 @@ class LeaveReqController extends Controller
     public function getexecutivesec() 
     {
         $leaveRequests = LeaveReq::with(['departmentHead', 'user', 'leaveType'])
-            ->where('dept_head', 'Approved') // Filter for approved requests
+            ->whereIn('dept_head', ['Approved', 'None'])// Filter for approved requests
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -62,7 +62,11 @@ class LeaveReqController extends Controller
                       $query->where('position', 'LIKE', '%Ministerial%')
                             ->orWhere('position', 'LIKE', '%Education%')
                             ->orWhere('position', 'LIKE', '%Communication%')
-                            ->orWhere('position', 'LIKE', '%Spirit of Prophecy%');
+                            ->orWhere('position', 'LIKE', '%Spirit of Prophecy%')
+                            ->orWhere('position', 'LIKE', '%Stewardship%')
+                            ->orWhere('position', 'LIKE', '%Youth Ministries%')
+                            ->orWhere('position', 'LIKE', '%Women Ministry%')
+                            ->orWhere('position', 'LIKE', '%Sabbath School Personal Ministries%');
                   });
         })
         ->select('id', 'name')
@@ -227,12 +231,21 @@ class LeaveReqController extends Controller
             Log::info("Notification prepared for President ID: {$president->id}");
         }
     } 
-    if ($user->department === 'Directors' && $leaveReq->exec_sec === 'Pending') {
+    // Notify Executive Secretary if user is from Directors and Exec Sec is pending
+    if (
+        $leaveReq->dept_head === 'None' &&
+        (
+            ($user->department === 'Administrators' && $user->position === 'Treasurer') ||
+            ($user->department === 'Secretariat' && $user->position === 'Executive Secretary') ||
+            $user->department === 'Directors'
+        )
+    ) {
         $executiveSecretary = User::where('department', 'Administrators')
-        ->where('position', 'like', '%Executive Secretary%')
-        ->first();
-        Log::info('Checking for Directors -> Exec Sec notification');
-
+            ->where('position', 'like', '%Executive Secretary%')
+            ->first();
+    
+        Log::info('Checking for leave request notification to Executive Secretary');
+    
         if ($executiveSecretary) {
             DB::table('notifications')->insert([
                 'userid' => $executiveSecretary->id,
@@ -242,11 +255,12 @@ class LeaveReqController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            Log::info('Executive Secretary notified from Directors department');
+            Log::info('Executive Secretary notified');
         } else {
-            Log::warning('Executive Secretary not found for Directors');
+            Log::warning('Executive Secretary not found');
         }
     }
+    
     
     // Insert all notifications at once
     if (!empty($notifications)) {
@@ -383,14 +397,18 @@ class LeaveReqController extends Controller
     
     public function approveLeaveRequest($id)
     {
+        Log::info("Attempting to approve leave request with ID: {$id}");
+
         $leaveReq = LeaveReq::find($id);
 
         if (!$leaveReq) {
+            Log::warning("Leave request with ID: {$id} not found");
             return response()->json(['message' => 'Leave request not found'], 404);
         }
 
         // Check if the dept_head is already approved
         if ($leaveReq->dept_head === 'Approved') {
+            Log::info("Leave request with ID: {$id} is already approved");
             return response()->json(['message' => 'Leave request is already approved'], 400);
         }
 
@@ -398,6 +416,7 @@ class LeaveReqController extends Controller
         $leaveReq->update([
             'dept_head' => 'Approved',
         ]);
+        Log::info("Leave request with ID: {$id} approved by Department Head");
 
         // Fetch the user's name who requested the leave
         $user = DB::table('users')->where('id', $leaveReq->userid)->first();
@@ -412,13 +431,14 @@ class LeaveReqController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            Log::info("Notification sent to user ID: {$leaveReq->userid} for leave request approval");
         }
 
-        // notify exec sec 
+        // Notify Executive Secretary
         $executiveSecretaries = DB::table('users')
-        ->where('department', 'Administrators')
-        ->whereRaw("position LIKE ?", ['%Executive Secretary%'])
-        ->get();
+            ->where('department', 'Administrators')
+            ->whereRaw("position LIKE ?", ['%Executive Secretary%'])
+            ->get();
 
         foreach ($executiveSecretaries as $secretary) {
             DB::table('notifications')->insert([
@@ -429,9 +449,10 @@ class LeaveReqController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            Log::info("Notification sent to Executive Secretary ID: {$secretary->id} for leave request ID: {$id}");
         }
 
-
+        Log::info("Leave request with ID: {$id} approved successfully");
         return response()->json(['message' => 'Leave request approved successfully'], 200);
     }
 
