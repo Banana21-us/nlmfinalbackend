@@ -13,24 +13,18 @@ class LeavetypeSeeder extends Seeder
     public function run()
     {
         DB::table('leavetypes')->insert([
+            
+            [
+                'type' => 'Day/s off | Annual Vacation',
+                'days_allowed' => 0,
+                'description' => 'Vacation Casual Leave',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
             [
                 'type' => 'Sick',
                 'days_allowed' => 10,
                 'description' => 'Sickness',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'type' => 'Day Off',
-                'days_allowed' => 10,
-                'description' => 'Casual Leave',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'type' => 'Annual Vacation',
-                'days_allowed' => 10,
-                'description' => 'Vacation',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

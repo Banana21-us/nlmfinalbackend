@@ -23,7 +23,7 @@ use App\Http\Controllers\WorkstatusController;
 
 Route::post('/login', [EmployeesController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/regusers', [EmployeesController::class, 'store']);
-Route::middleware(['auth:sanctum'])->group(function () {
+// Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::get('/users/count', [EmployeesController::class, 'count']);
 Route::get('/leavecount', [EmployeesController::class, 'countdashadmin']);
@@ -62,6 +62,9 @@ Route::get('/leave-count/{userid}', [LeaveReqController::class, 'countLeaveAndEv
 Route::apiResource('employmentdetails', EmploymentdetController::class);
 Route::apiResource('employmenteducs', EmploymenteducController::class);
 Route::apiResource('leave-types', LeaveTypeController::class);
+
+Route::get('/leave-getLeaveBalances/{userid}', [LeaveTypeController::class, 'getLeaveBalances']);
+
 Route::apiResource('department', DepartmentController::class);
 Route::apiResource('category', CategoryController::class);
 Route::apiResource('workstatus', WorkstatusController::class);
@@ -110,7 +113,7 @@ Route::get('assets/userPic/{filename}', function ($filename) {
         abort(404);
 });
 
-});
+// });
 
 Route::middleware('auth:sanctum')->post('/logout',[EmployeesController::class,'logout']);
 

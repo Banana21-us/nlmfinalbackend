@@ -184,31 +184,6 @@ class RequestfileController extends Controller
         return response()->json($users);
     }
 
-
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    // public function store(Request $request)
-    // {
-    //     $request->validate([
-    //         'userid' => 'required|exists:users,id',
-    //         'description' => 'required|string|max:255',
-    //         'file' => 'required|string|max:5000',
-    //     ]);
-
-    //     $requestfile = Requestfile::create([
-    //         'userid' => $request->input('userid'),
-    //         'description' => $request->input('description'),
-    //         'file' => $request->input('file'),
-    //         'time' => now(),
-    //     ]);
-
-    //     return response()->json([
-    //         'message' => 'Request file added successfully.',
-    //         'data' => $requestfile
-    //     ], 201);
-    // }
     public function store(Request $request)
     {
         $request->validate([
@@ -249,6 +224,7 @@ class RequestfileController extends Controller
         $user = User::leftJoin('requestfiles', 'users.id', '=', 'requestfiles.userid')
             ->select('users.id as userid', 'users.name', 'requestfiles.id', 'requestfiles.description', 'requestfiles.file', 'requestfiles.time')
             ->where('users.id', $userid)
+            ->orderBy('requestfiles.time', 'desc') // Sort by latest time
             ->get()
             ->groupBy('name')
             ->map(function ($files, $name) {

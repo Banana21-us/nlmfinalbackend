@@ -6,8 +6,74 @@ use App\Models\leavetype;
 use App\Http\Requests\StoreleavetypeRequest;
 use App\Http\Requests\UpdateleavetypeRequest;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
+use App\Models\User;
+use App\Models\LeaveReq;
 class LeavetypeController extends Controller
-{
+{   
+    
+    public function getLeaveBalances($userId)
+    {
+        $user = User::findOrFail($userId);
+    
+        if (!$user->reg_approval) {
+            return response()->json(['error' => 'Registration approval date not set'], 400);
+        }
+    
+        $yearsOfService = Carbon::parse($user->reg_approval)->diffInYears(Carbon::now());
+    
+        if ($yearsOfService >= 16) {
+            $vacationLeave = 20;
+        } elseif ($yearsOfService >= 8) {
+            $vacationLeave = 15;
+        } elseif ($yearsOfService >= 0) {
+            $vacationLeave = 10;
+        } 
+    
+        $entitlements = [
+            'Day/s off | Annual Vacation' => $vacationLeave,
+            'Sick'            => 10,
+            'Compassionate'   => 7,
+            'Maternity'       => 60,
+            'Paternity'       => 7,
+        ];
+    
+        $leaveBalances = [];
+    
+        foreach ($entitlements as $typeName => $allowedDays) {
+            $leaveType = Leavetype::where('type', $typeName)->first();
+    
+            if (!$leaveType) {
+                continue; // skip if leave type not found
+            }
+    
+            $usedDays = LeaveReq::where('userid', $userId)
+                ->where('leavetypeid', $leaveType->id)
+                ->where(function($query) {
+                    $query->where('dept_head', 'Approved')
+                          ->orWhere('dept_head', 'None');
+                })
+                
+                ->where('exec_sec', 'Approved')
+                ->where('president', 'Approved')
+                ->selectRaw('SUM(DATEDIFF(`to`, `from`) + 1) as used')
+                ->value('used') ?? 0;
+    
+            $leaveBalances[] = [
+                'type' => $typeName,
+                'allowed' => $allowedDays,
+                'used' => $usedDays,
+                'remaining' => max($allowedDays - $usedDays, 0),
+            ];
+        }
+    
+        return response()->json([
+            'years_of_service' => $yearsOfService,
+            'balances' => $leaveBalances,
+        ]);
+    }
+    
+
     /**
      * Display a listing of the resource.
      */
