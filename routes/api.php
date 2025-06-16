@@ -20,6 +20,7 @@ use App\Http\Controllers\RequestfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\WorkstatusController;
+use App\Http\Controllers\CertificatesController;
 
 Route::post('/login', [EmployeesController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/regusers', [EmployeesController::class, 'store']);
@@ -112,7 +113,8 @@ Route::get('assets/userPic/{filename}', function ($filename) {
     
         abort(404);
 });
-
+Route::post('/post-cert', [CertificatesController::class, 'postcert']);
+Route::get('/certbyid/{userid}', [CertificatesController::class, 'showcertbyid']);
 // });
 
 Route::middleware('auth:sanctum')->post('/logout',[EmployeesController::class,'logout']);

@@ -443,7 +443,7 @@ class EmployeesController extends Controller
                 'designation' => $request->designation,
                 'work_status' => $request->work_status,
                 'category' => $request->category,
-
+                'reg_approval' => $request->reg_approval,
                 'password' => Hash::make($request->password),
             ]);
 
@@ -593,6 +593,7 @@ class EmployeesController extends Controller
             'designation' => 'sometimes|string|max:255|nullable',
             'work_status' => 'sometimes|string|max:255|nullable',
             'category' => 'sometimes|string|max:255|nullable',
+            'reg_approval' => 'sometimes|date|nullable',  
             'email' => 'sometimes|email|unique:users,email,' . $id,
             'password' => 'sometimes|string|min:6|nullable',
         ]);
@@ -614,6 +615,9 @@ class EmployeesController extends Controller
         }
         if ($request->has('category')) {
             $employee->category = $request->category;
+        }
+        if ($request->has('reg_approval')) {
+            $employee->reg_approval = $request->reg_approval;
         }
         if ($request->has('email')) {
             $employee->email = $request->email;
