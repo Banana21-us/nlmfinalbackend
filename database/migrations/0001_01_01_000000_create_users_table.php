@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('birthplace'); // Use 'string' for birthplace
             $table->bigInteger('phone_number');
             $table->enum('gender', ['Male', 'Female']); // Use 'enum' for gender
-            $table->enum('status', ['Single', 'Married'])->default('Single');
+            $table->enum('status', ['Single', 'Married', 'Single Parent', 'Widow'])->default('Single');
             $table->string('address'); // Use 'string' for birthplace
             $table->string('department')->nullable(); // Use 'string' for birthplace
             $table->string('position')->nullable(); // Use 'string' for birthplace

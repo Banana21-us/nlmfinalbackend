@@ -21,7 +21,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\WorkstatusController;
 use App\Http\Controllers\CertificatesController;
-
+use App\Http\Controllers\YearsofserviceController;
 Route::post('/login', [EmployeesController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/regusers', [EmployeesController::class, 'store']);
 // Route::middleware(['auth:sanctum'])->group(function () {
@@ -115,6 +115,8 @@ Route::get('assets/userPic/{filename}', function ($filename) {
 });
 Route::post('/post-cert', [CertificatesController::class, 'postcert']);
 Route::get('/certbyid/{userid}', [CertificatesController::class, 'showcertbyid']);
+Route::delete('/delcertificates/{id}', [CertificatesController::class, 'deletecert']);
+
 // });
 
 Route::middleware('auth:sanctum')->post('/logout',[EmployeesController::class,'logout']);

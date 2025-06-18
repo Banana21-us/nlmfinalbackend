@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\announcement;
 use App\Models\Employmenteduc;
 use App\Models\Employmentdet;
+use App\Models\yearsofservice;
 use App\Models\empfamily;
 use App\Models\spouse;
 use App\Models\notification;
@@ -204,6 +205,10 @@ class EmployeesController extends Controller
                 'education.*.year' => 'required|date',
                 'education.*.school' => 'required|string',
                 'education.*.degree' => 'nullable|string',
+                'yearsofservice' => 'nullable|array',
+                'yearsofservice.*.organization' => 'required|string',
+                'yearsofservice.*.start_date' => 'required|date',
+                'yearsofservice.*.end_date' => 'nullable|date',
                 // 'password' => 'nullable|string|min:8', 
                 'old_password' => 'nullable|string',
                 'new_password' => 'nullable|string|min:8',
@@ -322,6 +327,24 @@ class EmployeesController extends Controller
                 Log::info('No employment data provided in the request.');
             }
 
+            // Handle yearsofservice
+            if ($request->has('yearsofservice')) {
+                yearsofservice::where('userid', $request->userid)->delete(); // Remove old yearsofservice first
+                Log::info('Existing yearsofservice records removed.');  
+                foreach ($request->yearsofservice as $yos) {
+                    yearsofservice::create([
+                        'userid' => $request->userid,
+                        'organization' => $yos['organization'],
+                        'start_date' => $yos['start_date'],
+                        'end_date' => $yos['end_date'],
+                    ]);
+                    Log::info('Year of service created:', ['organization' => $yos['organization']]);
+                }
+                Log::info('Year of service information updated/created successfully.');
+            } else {
+                Log::info('No yearsofservice data provided in the request.');   
+            }
+
             Log::info('Account data saved successfully.');
 
             return response()->json(['message' => 'Account data saved successfully'], 200);
@@ -358,6 +381,24 @@ class EmployeesController extends Controller
                 ->select('position', 'dateofemp', 'organization')
                 ->get();
 
+            // Fetch years of service
+            $yearsofservice = yearsofservice::where('userid', $userid)
+                ->select('organization', 'start_date', 'end_date')
+                ->get();
+            
+            // Compute total months of service (NULL end_date = present)
+            $totalMonths = 0;
+
+            foreach ($yearsofservice as $service) {
+                $start = Carbon::parse($service->start_date);
+                $end = $service->end_date ? Carbon::parse($service->end_date) : Carbon::now();
+
+                $totalMonths += $start->diffInMonths($end);
+            }
+
+            $years = floor($totalMonths / 12);
+            $months = $totalMonths % 12;
+
             // Prepare account data
             $accountData = [
                 'userid' => $user->id,
@@ -374,7 +415,12 @@ class EmployeesController extends Controller
                 'status' => $user->status,
                 'education' => $education,
                 'employments' => $employments,
-                
+                'yearsofservice' => $yearsofservice,
+                'total_years_of_service' => [
+                    'years' => $years,
+                    'months' => $months,
+                    'summary' => "{$years} years, {$months} months"
+                ],
             ];
 
             // Check marital status before fetching spouse and children
@@ -398,6 +444,7 @@ class EmployeesController extends Controller
 
             return response()->json(['message' => 'Error fetching account details'], 500);
         }
+
     }
     public function index(){
         $employees = User::orderBy('created_at', 'desc')->get();
@@ -526,13 +573,14 @@ class EmployeesController extends Controller
         $employment = Employmentdet::where('userid', $id)->get();
         $employfamily = empfamily::where('userid', $id)->get();
         $spouse = spouse::where('userid', $id)->get();
-
+        $yearsofservice = yearsofservice::where('userid', $id)->get();
         return response()->json([
             'employee' => $employee,
             'education' => $education,
             'employment' => $employment,
             'employfamily' => $employfamily,
             'spouse' => $spouse,
+            'yearsofservice' => $yearsofservice,
         ]);
     }
     public function acceptemployee(Request $request, $id){

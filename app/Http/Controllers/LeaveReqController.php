@@ -34,8 +34,6 @@ class LeaveReqController extends Controller
         return response()->json($leaveRequests);
     }
 
-
-
     public function getByDHead($dheadId)
     {
         $leaveRequests = LeaveReq::with(['departmentHead', 'user','leaveType']) // Eager load user and department head
@@ -45,7 +43,6 @@ class LeaveReqController extends Controller
 
         return response()->json($leaveRequests);
     }
-
 
     public function getDepartmentHeads()
     {
@@ -75,8 +72,9 @@ class LeaveReqController extends Controller
         // Return the results (you can return as JSON or pass to a view)
         return response()->json($departmentHeads);
     }
+    
     public function countLeaveAndEvents($userid)
-{
+    {
     $today = now()->toDateString(); // Get today's date (YYYY-MM-DD)
 
     // Count leave requests by status
@@ -544,8 +542,7 @@ class LeaveReqController extends Controller
 
         return response()->json(['message' => 'Leave request approved successfully'], 200);
     }
-    public function rejectLeaveRequestpres($id)
-    {
+    public function rejectLeaveRequestpres($id){
         $leaveReq = LeaveReq::find($id);
 
         if (!$leaveReq) {

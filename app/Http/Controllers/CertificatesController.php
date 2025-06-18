@@ -103,8 +103,34 @@ class CertificatesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(certificates $certificates)
+    public function deletecert($id)
     {
-        //
+        try {
+            // Find the certificate by ID
+            $certificate = Certificates::findOrFail($id);
+
+            // Get the file path
+            $filePath = storage_path('app/public/certificates/' . $certificate->file);
+
+            // Delete the file from storage
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+
+            // Delete the database record
+            $certificate->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Certificate deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete certificate',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
