@@ -572,6 +572,23 @@ class LeaveReqController extends Controller
         return response()->json(['message' => 'Leave request Rejected successfully'], 200);
     }
     
+    public function updateDates(Request $request, $id)
+    {
+        // Validate both dates
+        $validated = $request->validate([
+            'from' => 'required|date',
+            'to'   => 'required|date|after_or_equal:from'
+        ]);
+
+        // Update in a single query
+        LeaveReq::where('id', $id)->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Dates updated successfully'
+        ]);
+    }
+
     // Delete leave request
     public function destroy($id)
     {

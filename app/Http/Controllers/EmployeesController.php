@@ -459,7 +459,7 @@ class EmployeesController extends Controller
             'birthplace' => 'required|string|max:255',
             'phone_number' => 'required|numeric',
             'gender' => 'required|in:Male,Female',
-            'status' => 'nullable|string|in:Single,Married',
+            'status' => 'nullable|string|in:Single,Married,Single Parent,Widow',
             'address' => 'required|string|max:255',
             'department' => 'nullable|string|max:255',
             'position' => 'nullable|string|max:255',

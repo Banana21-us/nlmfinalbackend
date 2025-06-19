@@ -22,9 +22,29 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\WorkstatusController;
 use App\Http\Controllers\CertificatesController;
 use App\Http\Controllers\YearsofserviceController;
-Route::post('/login', [EmployeesController::class, 'login'])->middleware('throttle:5,1');
-Route::post('/regusers', [EmployeesController::class, 'store']);
-// Route::middleware(['auth:sanctum'])->group(function () {
+
+Route::post('/login', [EmployeesController::class, 'login']);
+// ->middleware('throttle:5,1')
+
+Route::apiResource('requestfile', RequestfileController::class);
+Route::post('/upload-files', [RequestfileController::class, 'uploadFiles'])->middleware('web');
+Route::post('/store-or-update-acc-code/{id}', [RequestfileController::class, 'storeOrUpdateAccCode']);
+Route::get('/requestfile/records/{userId}', [RequestfileController::class, 'getrecordsByUserId']);
+Route::get('/filerecords', [RequestfileController::class, 'bynotsoa']);
+Route::get('/soarecords', [RequestfileController::class, 'bysoa']);
+Route::post('/upload', function (Request $request) {
+    if ($request->hasFile('file')) {
+        $file = $request->file('file');
+        $path = $file->store('uploads', 'public'); // Store in 'storage/app/public/uploads'
+        return response()->json(['fileUrl' => asset('storage/' . $path)]);
+    }
+
+    return response()->json(['error' => 'No file uploaded'], 400);
+});
+Route::post('/upload-image', [EmployeesController::class, 'uploadImage']);
+Route::apiResource('announcements', AnnouncementController::class);
+
+Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::get('/users/count', [EmployeesController::class, 'count']);
 Route::get('/leavecount', [EmployeesController::class, 'countdashadmin']);
@@ -60,6 +80,13 @@ Route::put('/leave-pres/{id}/approve', [LeaveReqController::class, 'approveLeave
 Route::put('/leave-pres/{id}/reject', [LeaveReqController::class, 'rejectLeaveRequestpres']);
 Route::get('/leave-count/{userid}', [LeaveReqController::class, 'countLeaveAndEvents']);
 
+Route::put('/leave-requests/{id}', function (Request $request, $id) {
+    DB::table('leave_reqs')
+        ->where('id', $id)
+        ->update($request->only(['from', 'to']));
+    
+    return ['success' => true];
+});
 Route::apiResource('employmentdetails', EmploymentdetController::class);
 Route::apiResource('employmenteducs', EmploymenteducController::class);
 Route::apiResource('leave-types', LeaveTypeController::class);
@@ -71,14 +98,7 @@ Route::apiResource('category', CategoryController::class);
 Route::apiResource('workstatus', WorkstatusController::class);
 Route::apiResource('designation', DesignationController::class);
 Route::apiResource('position', PositionController::class);
-Route::apiResource('announcements', AnnouncementController::class);
 
-Route::post('/store-or-update-acc-code/{id}', [RequestfileController::class, 'storeOrUpdateAccCode']);
-Route::apiResource('requestfile', RequestfileController::class);
-Route::get('/filerecords', [RequestfileController::class, 'bynotsoa']);
-Route::get('/soarecords', [RequestfileController::class, 'bysoa']);
-Route::get('/requestfile/records/{userId}', [RequestfileController::class, 'getrecordsByUserId']);
-Route::post('/upload-files', [RequestfileController::class, 'uploadFiles']);
 //uploadIMG.....
 
 Route::get('/notifications/{userId}', [NotificationController::class, 'getnotif']); 
@@ -94,16 +114,7 @@ Route::apiResource('events', EventsController::class);
 Route::get('/events/user/{userId}', [EventsController::class, 'getEventsByUserId']);
 Route::post('/nlmevents', [EventsController::class, 'storeForAllUsers']);
 
-Route::post('/upload', function (Request $request) {
-    if ($request->hasFile('file')) {
-        $file = $request->file('file');
-        $path = $file->store('uploads', 'public'); // Store in 'storage/app/public/uploads'
-        return response()->json(['fileUrl' => asset('storage/' . $path)]);
-    }
 
-    return response()->json(['error' => 'No file uploaded'], 400);
-});
-Route::post('/upload-image', [EmployeesController::class, 'uploadImage']);
 Route::get('assets/userPic/{filename}', function ($filename) {
         $path = public_path('assets/userPic/' . $filename);
         
@@ -113,11 +124,15 @@ Route::get('assets/userPic/{filename}', function ($filename) {
     
         abort(404);
 });
+Route::post('/regusers', [EmployeesController::class, 'store']);
+
+
 Route::post('/post-cert', [CertificatesController::class, 'postcert']);
 Route::get('/certbyid/{userid}', [CertificatesController::class, 'showcertbyid']);
 Route::delete('/delcertificates/{id}', [CertificatesController::class, 'deletecert']);
 
-// });
+});
+
 
 Route::middleware('auth:sanctum')->post('/logout',[EmployeesController::class,'logout']);
 
